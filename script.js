@@ -1,7 +1,7 @@
 // === DHANALAKSHMI KALAMKARI - CLIENT WEBPAGE LOGIC (script.js) ===
 
-const SORT_STRATEGY = 'PRICE_HIGH_TO_LOW'; 
-const TARGET_MIDDLE_PRICE = 26500;
+let currentSortStrategy = 'PRICE_HIGH_TO_LOW'; 
+const TARGET_MIDDLE_PRICE = 27500;
 const FEATURED_FABRIC_FIRST = 'Kanchipuram';
 
 const GLOBAL_DISCOUNT_PERCENTAGE = 10; 
@@ -11,8 +11,6 @@ const ANALYTICS_API_URL = 'https://script.google.com/macros/s/AKfycbyN2Kzp3kxYP0
 
 const CONTACT_PHONE_NUMBER = '919063374020';
 const DEFAULT_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960"%3E%3Crect width="720" height="960" fill="%23F8EEDC"/%3E%3Ctext x="50%25" y="48%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="%234A0202"%3EImage+Not+Available%3C/text%3E%3C/svg%3E';
-
-const SHARE_ICON_SVG = `<svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>`;
 
 const DEPARTMENTS = [
     { key: 'saree', label: 'Kalamkari Sarees', singular: 'Kalamkari Saree' },
@@ -29,7 +27,6 @@ let isDetailZoomed = false;
 let isOverlayZoomed = false;
 let isInitialLoad = true; 
 let sessionPushedStates = 0;
-let pendingShareData = null;
 
 let currentTrackedProductCode = 'N/A';
 let currentTrackedProductTitle = 'Browsing Main Kalamkari Catalogue';
@@ -230,25 +227,58 @@ function updateGoogleImageSchemaAndMeta(product) {
     }
 }
 
-function sortProductsByPrice(products) {
+function isFeaturedFabric(product) {
+    if (!FEATURED_FABRIC_FIRST || FEATURED_FABRIC_FIRST.toLowerCase() === 'none') {
+        return false;
+    }
+
+    const target = FEATURED_FABRIC_FIRST.toLowerCase().trim();
+    const fabricStr = (product.fabric || '').toLowerCase();
+    const titleStr = (product.title || '').toLowerCase();
+    const catStr = (product.category || '').toLowerCase();
+    const rawTitleStr = (product.rawCustomTitle || '').toLowerCase();
+
+    if (target.includes('kanchi')) {
+        const kanchiAliases = ['kanchipuram', 'kanchi', 'kanjeevaram', 'kanjivaram'];
+        return kanchiAliases.some(alias => 
+            fabricStr.includes(alias) || 
+            titleStr.includes(alias) || 
+            catStr.includes(alias) ||
+            rawTitleStr.includes(alias)
+        );
+    }
+
+    return fabricStr.includes(target) || titleStr.includes(target) || catStr.includes(target) || rawTitleStr.includes(target);
+}
+
+function sortProductsByPrice(products, strategy = currentSortStrategy) {
     return [...products].sort((a, b) => {
-        if (FEATURED_FABRIC_FIRST && FEATURED_FABRIC_FIRST.toLowerCase() !== 'none') {
-            const featuredKey = FEATURED_FABRIC_FIRST.toLowerCase().trim();
-            const aIsFeatured = (a.fabric || '').toLowerCase().includes(featuredKey) || (a.title || '').toLowerCase().includes(featuredKey);
-            const bIsFeatured = (b.fabric || '').toLowerCase().includes(featuredKey) || (b.title || '').toLowerCase().includes(featuredKey);
+        const priceA = Number(a.price) || 0;
+        const priceB = Number(b.price) || 0;
+        const fabricA = (a.fabric || '').trim().toLowerCase();
+        const fabricB = (b.fabric || '').trim().toLowerCase();
+
+        if (strategy === 'FEATURED_FIRST') {
+            const aIsFeatured = isFeaturedFabric(a);
+            const bIsFeatured = isFeaturedFabric(b);
 
             if (aIsFeatured && !bIsFeatured) return -1;
             if (!aIsFeatured && bIsFeatured) return 1;
+            return priceB - priceA;
         }
 
-        if (SORT_STRATEGY === 'PRICE_LOW_TO_HIGH') {
-            return (a.price || 0) - (b.price || 0);
-        } else if (SORT_STRATEGY === 'MIDDLE_BUDGET_FIRST') {
-            const distA = Math.abs((a.price || 0) - TARGET_MIDDLE_PRICE);
-            const distB = Math.abs((b.price || 0) - TARGET_MIDDLE_PRICE);
+        if (strategy === 'PRICE_LOW_TO_HIGH') {
+            return priceA - priceB;
+        } else if (strategy === 'FABRIC_AZ') {
+            const fabricCompare = fabricA.localeCompare(fabricB);
+            if (fabricCompare !== 0) return fabricCompare;
+            return priceB - priceA;
+        } else if (strategy === 'MIDDLE_BUDGET' || strategy === 'MIDDLE_BUDGET_FIRST') {
+            const distA = Math.abs(priceA - TARGET_MIDDLE_PRICE);
+            const distB = Math.abs(priceB - TARGET_MIDDLE_PRICE);
             return distA - distB;
         } else {
-            return (b.price || 0) - (a.price || 0);
+            return priceB - priceA;
         }
     });
 }
@@ -300,7 +330,7 @@ function updateDepartmentUI() {
     });
 
     if (elements.searchInput) {
-        elements.searchInput.placeholder = `Search ${activeDepartment.label.toLowerCase()} by code, fabric or style...`;
+        elements.searchInput.placeholder = `Search ${activeDepartment.label.toLowerCase()} by code, fabric or design...`;
     }
 }
 
@@ -449,6 +479,7 @@ const elements = {
     wishlistGrid: document.getElementById('wishlist-grid'),
     spinner: document.getElementById('loading-spinner'),
     searchInput: document.getElementById('search-input'),
+    sortSelect: document.getElementById('sort-select'),
     filtersContainer: document.getElementById('category-filters'),
     wishlistCount: document.getElementById('wishlist-count'),
     viewWishlistBtn: document.getElementById('wishlist-trigger'),
@@ -469,7 +500,6 @@ const elements = {
     addToWishlistBtn: document.getElementById('wishlist-btn'),
     wishlistBtnText: document.getElementById('wishlist-btn-text'),
     wishlistBtnIcon: document.getElementById('wishlist-btn-icon'),
-    shareBtn: document.getElementById('share-btn'),
     videoCallBtn: document.getElementById('video-call-btn')
 };
 
@@ -534,7 +564,6 @@ async function init() {
     isInitialLoad = false;
 }
 
-// STANDARD CLEAN TITLE GENERATOR: "Pure [Fabric] Silk Srikalahasthi Pen Kalamkari Saree"
 function generateCleanKalamkariTitle(customTitle, fabric, departmentKey, code) {
     let baseFabric = (fabric || 'Silk').trim();
     
@@ -619,17 +648,17 @@ async function fetchProducts() {
             const title = generateCleanKalamkariTitle(rawCustomTitle, fabric, departmentKey, code);
 
             return {
-                code, title, fabric, category, department, departmentKey,
+                code, title, rawCustomTitle, fabric, category, department, departmentKey,
                 price: sellingPrice, mrp: rawMrp,
                 qty, imageLink, thumbnail, imageId, description
             };
         }).filter(item => item.code && item.price > 0);
 
-        allProducts = sortProductsByPrice(allProducts);
+        allProducts = sortProductsByPrice(allProducts, currentSortStrategy);
         if (!getDepartmentProducts(currentDepartment).length && allProducts.length) {
             currentDepartment = allProducts[0].departmentKey || 'saree';
         }
-        filteredProducts = sortProductsByPrice(getDepartmentProducts());
+        filteredProducts = sortProductsByPrice(getDepartmentProducts(), currentSortStrategy);
 
         wishlist = wishlist.map(savedItem => {
             const freshItem = allProducts.find(p => p.code === savedItem.code);
@@ -725,17 +754,7 @@ function renderProducts(products, container, isHorizontal = false) {
             toggleWishlist(product);
         };
 
-        const cardShareBtn = document.createElement('button');
-        cardShareBtn.className = 'card-action-btn card-share-btn';
-        cardShareBtn.innerHTML = SHARE_ICON_SVG;
-        cardShareBtn.title = 'Share Saree Artwork';
-        cardShareBtn.onclick = (e) => {
-            e.stopPropagation();
-            shareProduct(product);
-        };
-
         quickActions.appendChild(cardWishlistBtn);
-        quickActions.appendChild(cardShareBtn);
         imageWrapper.appendChild(quickActions);
 
         const info = document.createElement('div');
@@ -825,7 +844,7 @@ function renderFabricProducts(currentProduct) {
 
     if (list.length > 0) {
         fabricSection.style.display = 'block';
-        renderProducts(list.slice(0, 8), fabricContainer, true);
+        renderProducts(sortProductsByPrice(list, currentSortStrategy).slice(0, 8), fabricContainer, true);
     } else {
         fabricSection.style.display = 'none';
     }
@@ -924,7 +943,8 @@ function renderQuickCategoryPills(currentProd = currentProduct) {
         const grid = document.createElement('div');
         grid.className = 'product-grid horizontal-scroll-grid';
 
-        renderProducts(item.products.slice(0, 8), grid, true);
+        const sortedFabricItems = sortProductsByPrice(item.products, currentSortStrategy);
+        renderProducts(sortedFabricItems.slice(0, 8), grid, true);
 
         block.appendChild(blockTitle);
         block.appendChild(grid);
@@ -1153,6 +1173,7 @@ function closeOverlay() {
     if (!elements.overlay) return;
     elements.overlay.classList.add('hidden');
     if (elements.overlayImage) {
+        elements.overlayImage.src = ''; // Clears image src so no broken image icon appears
         elements.overlayImage.style.transform = 'scale(1)';
         elements.overlayImage.style.transformOrigin = '50% 50%';
         elements.overlayImage.style.cursor = 'zoom-in';
@@ -1212,7 +1233,7 @@ function renderWishlist() {
     } else {
         elements.wishlistGrid.style.display = 'grid';
         if (elements.emptyWishlistMsg) elements.emptyWishlistMsg.style.display = 'none';
-        renderProducts(wishlist, elements.wishlistGrid);
+        renderProducts(sortProductsByPrice(wishlist, currentSortStrategy), elements.wishlistGrid);
     }
 }
 
@@ -1221,7 +1242,7 @@ function filterAndSearchProducts() {
     const activeFilterBtn = document.querySelector('.filter-btn.active');
     const filterTerm = activeFilterBtn ? activeFilterBtn.dataset.filter.toLowerCase().trim() : 'all';
     
-    filteredProducts = getDepartmentProducts().filter(product => {
+    let matches = getDepartmentProducts().filter(product => {
         const matchesSearch = !searchTerm ? true : (
             (product.code && product.code.toLowerCase().includes(searchTerm)) ||
             (product.title && product.title.toLowerCase().includes(searchTerm)) ||
@@ -1238,6 +1259,8 @@ function filterAndSearchProducts() {
         
         return matchesSearch && matchesFilter;
     });
+
+    filteredProducts = sortProductsByPrice(matches, currentSortStrategy);
     
     renderProducts(filteredProducts, elements.productGrid);
 }
@@ -1266,42 +1289,6 @@ function bookVideoCall(product = currentProduct) {
     showToast('Redirecting to WhatsApp to schedule Live Video Call...');
 }
 
-function shareProduct(product = currentProduct) {
-    if (!product) return;
-    const shareUrl = `https://www.dhanalakshmi-kalamkari.com/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
-    const shareText = `Explore this authentic hand-painted Dhanalakshmi Kalamkari saree artwork: "${product.title}" (Code: ${product.code})`;
-    
-    pendingShareData = { title: product.title, text: shareText, url: shareUrl };
-
-    if (navigator.share && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        navigator.share({
-            title: product.title,
-            text: shareText,
-            url: shareUrl
-        }).catch(err => {
-            if (err.name !== 'AbortError') {
-                openShareModal(product.title, shareUrl, shareText);
-            }
-        });
-    } else {
-        openShareModal(product.title, shareUrl, shareText);
-    }
-}
-
-function openShareModal(title, shareUrl, shareText) {
-    const modal = document.getElementById('share-modal');
-    const subtitle = document.getElementById('share-modal-subtitle');
-    if (!modal) return;
-
-    if (subtitle) subtitle.textContent = `Choose your preferred channel to share "${title}":`;
-    modal.classList.remove('hidden');
-}
-
-function closeShareModal() {
-    const modal = document.getElementById('share-modal');
-    if (modal) modal.classList.add('hidden');
-}
-
 function setupEventListeners() {
     if (elements.backToCatalogueBtn) elements.backToCatalogueBtn.addEventListener('click', goBack);
     if (elements.backFromWishlistBtn) elements.backFromWishlistBtn.addEventListener('click', goBack);
@@ -1318,59 +1305,23 @@ function setupEventListeners() {
     }
     
     if (elements.addToWishlistBtn) elements.addToWishlistBtn.addEventListener('click', () => toggleWishlist(currentProduct));
-    if (elements.shareBtn) elements.shareBtn.addEventListener('click', () => shareProduct(currentProduct));
     if (elements.videoCallBtn) elements.videoCallBtn.addEventListener('click', () => bookVideoCall(currentProduct));
 
     const floatingWishlistBtn = document.getElementById('detail-floating-wishlist-btn');
     if (floatingWishlistBtn) floatingWishlistBtn.addEventListener('click', () => toggleWishlist(currentProduct));
-    
-    const floatingShareBtn = document.getElementById('detail-floating-share-btn');
-    if (floatingShareBtn) floatingShareBtn.addEventListener('click', () => shareProduct(currentProduct));
-
-    const shareCloseBtn = document.getElementById('share-modal-close');
-    const shareBackdrop = document.getElementById('share-modal-backdrop');
-    if (shareCloseBtn) shareCloseBtn.addEventListener('click', closeShareModal);
-    if (shareBackdrop) shareBackdrop.addEventListener('click', closeShareModal);
-
-    const shareWhatsappBtn = document.getElementById('share-whatsapp-btn');
-    if (shareWhatsappBtn) {
-        shareWhatsappBtn.addEventListener('click', () => {
-            if (!pendingShareData) return;
-            const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(pendingShareData.text + '\n' + pendingShareData.url)}`;
-            window.open(waUrl, '_blank');
-            closeShareModal();
-        });
-    }
-
-    const shareCopyBtn = document.getElementById('share-copy-btn');
-    if (shareCopyBtn) {
-        shareCopyBtn.addEventListener('click', async () => {
-            if (!pendingShareData) return;
-            try {
-                await navigator.clipboard.writeText(pendingShareData.url);
-                showToast("Kalamkari masterpiece link copied to clipboard!");
-            } catch (err) {
-                showToast("Failed to copy link.");
-            }
-            closeShareModal();
-        });
-    }
-
-    const shareFacebookBtn = document.getElementById('share-facebook-btn');
-    if (shareFacebookBtn) {
-        shareFacebookBtn.addEventListener('click', () => {
-            if (!pendingShareData) return;
-            const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pendingShareData.url)}`;
-            window.open(fbUrl, '_blank');
-            closeShareModal();
-        });
-    }
 
     if (elements.searchInput) {
         elements.searchInput.addEventListener('input', () => {
             if (views.details && views.details.classList.contains('active')) {
                 showView('catalogue');
             }
+            filterAndSearchProducts();
+        });
+    }
+
+    if (elements.sortSelect) {
+        elements.sortSelect.addEventListener('change', (e) => {
+            currentSortStrategy = e.target.value;
             filterAndSearchProducts();
         });
     }
@@ -1399,7 +1350,6 @@ function setupEventListeners() {
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape') {
             closeOverlay();
-            closeShareModal();
         }
     });
 

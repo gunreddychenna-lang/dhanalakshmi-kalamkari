@@ -10,7 +10,7 @@ const CATALOG_API_URL = 'https://script.google.com/macros/s/AKfycbzAXbuROmepx2Zw
 const ANALYTICS_API_URL = 'https://script.google.com/macros/s/AKfycbyN2Kzp3kxYP0uQjf6RU4yZ9KtL_WmV2gn3TVdj3a-e_EIEN5nWDvyrNOOiPfzBGAvc/exec'; 
 
 const CONTACT_PHONE_NUMBER = '919063374020';
-const DEFAULT_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960"%3E%3Crect width="720" height="960" fill="%23F5EFE6"/%3E%3Ctext x="50%25" y="48%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="%23A67D5A"%3EImage+Not+Available%3C/text%3E%3C/svg%3E';
+const DEFAULT_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960"%3E%3Crect width="720" height="960" fill="%23F8EEDC"/%3E%3Ctext x="50%25" y="48%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="%234A0202"%3EImage+Not+Available%3C/text%3E%3C/svg%3E';
 
 const SHARE_ICON_SVG = `<svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>`;
 
@@ -30,6 +30,7 @@ let isOverlayZoomed = false;
 let isInitialLoad = true; 
 let sessionPushedStates = 0;
 let pendingShareData = null;
+let loaderInterval = null;
 
 let currentTrackedProductCode = 'N/A';
 let currentTrackedProductTitle = 'Browsing Main Kalamkari Catalogue';
@@ -107,7 +108,7 @@ function showToast(message) {
     }, 3200);
 }
 
-// ENHANCED GOOGLE DRIVE FILE ID EXTRACTION
+// GOOGLE DRIVE FILE ID EXTRACTION
 function getGoogleDriveId(product) {
     if (!product) return null;
     
@@ -131,7 +132,7 @@ function getGoogleDriveId(product) {
     return null;
 }
 
-// FULL ULTRA-HD IMAGE GENERATOR (FETCHES 2000px CRISP MASTER IMAGE WITH q=92 HD QUALITY)
+// IMAGE URL GENERATOR WITH HD CDN PROXY
 function getProductImageUrl(product, width = 1200) {
     if (!product) return DEFAULT_IMAGE;
     
@@ -156,7 +157,7 @@ function getProductImageUrl(product, width = 1200) {
     return DEFAULT_IMAGE;
 }
 
-// FALLBACK HANDLER FOR HIGH-RES GOOGLE DRIVE THUMBNAILS & DIRECT CDN
+// IMAGE FALLBACK HANDLER
 function setupImageFallback(imgElement, product, width = 1200) {
     const fileId = getGoogleDriveId(product);
     if (!fileId) return;
@@ -438,11 +439,34 @@ async function logVisitorTraffic() {
     } catch (error) {}
 }
 
+// TEMPLE INTRO LOADER ANIMATION & STATUS SEQUENCE
+function startLoaderStatusSequence() {
+    const stepText = document.getElementById('loader-step-text');
+    if (!stepText) return;
+
+    const steps = [
+        "🛕 Unveiling Sanctum Sanctorum Artistry...",
+        "🌸 Harmonizing Organic Mineral & Flower Dyes...",
+        "✍️ Freehand Bamboo Pen Painting by Master Artisans...",
+        "🌊 Blessed in Sacred Swarnamukhi River Waters..."
+    ];
+
+    let currentStep = 0;
+    loaderInterval = setInterval(() => {
+        currentStep = (currentStep + 1) % steps.length;
+        stepText.textContent = steps[currentStep];
+    }, 700);
+}
+
 function hideIntroAnimation() {
+    if (loaderInterval) clearInterval(loaderInterval);
+
     const loader = document.getElementById('premium-intro-loader');
     if (loader) {
-        loader.classList.add('fade-out');
-        setTimeout(() => loader.style.display = 'none', 800);
+        setTimeout(() => {
+            loader.classList.add('fade-out');
+            setTimeout(() => loader.style.display = 'none', 1400);
+        }, 1200);
     }
 }
 
@@ -503,6 +527,8 @@ function goBack() {
 }
 
 async function init() {
+    startLoaderStatusSequence();
+
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     updateWishlistCount();
     setupEventListeners();
@@ -604,7 +630,6 @@ async function fetchProducts() {
             }
 
             const description = String(getFieldValue(item, ['description', 'product description', 'desc'])).trim();
-
             const customTitle = String(getFieldValue(item, ['product name', 'saree name', 'dupatta name', 'item name', 'name', 'title'])).trim();
 
             let title = customTitle;
@@ -666,7 +691,7 @@ function renderProducts(products, container, isHorizontal = false) {
     container.innerHTML = '';
     
     if (products.length === 0) {
-        container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--color-antique-gold); padding: 3rem 0;">No authentic hand-painted Kalamkari artworks found matching your criteria.</p>';
+        container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--color-haldi-gold); padding: 3rem 0; font-family: var(--font-heritage); font-size: 1.1rem;">No authentic hand-painted Kalamkari artworks found matching your criteria.</p>';
         return;
     }
     
@@ -892,7 +917,6 @@ function renderQuickCategoryPills(currentProd = currentProduct) {
         const key = fabric.toLowerCase().replace(/\s+/g, ' ').trim();
 
         if (!fabricMap.has(key)) {
-            const deptConfig = DEPARTMENTS.find(d => d.key === targetDept) || { label: 'Kalamkari Sarees' };
             const isPluralFabric = fabric.toLowerCase().includes('saree') || fabric.toLowerCase().includes('sari') || fabric.toLowerCase().includes('dupatta');
             
             fabricMap.set(key, {

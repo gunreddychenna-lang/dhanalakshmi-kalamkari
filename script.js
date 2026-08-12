@@ -2,8 +2,8 @@
 
 // ⚙️ SORTING CONTROLS (Change these anytime to re-order your website)
 let currentSortStrategy = 'TARGET_PRICE_FIRST'; // 'TARGET_PRICE_FIRST' | 'MOST_VIEWED_FIRST' | 'WISHLIST_VAULT_FIRST' | 'FABRIC_AND_PRICE'
-const FEATURED_FABRIC_FIRST = 'kanchipuram';
-const TARGET_FEATURED_PRICE = 26500; // 🎯 Shows Kanchipuram sarees around ₹26,500 FIRST!
+const FEATURED_FABRIC_FIRST = 'ikkath silk'; // 🎯 Shows Ikkat Silk sarees FIRST! (Change to 'kanchipuram' or 'kanchi' for Kanchipuram sarees, or 'none' to disable)
+const TARGET_FEATURED_PRICE = 27500; // 🎯 Shows Kanchipuram sarees around ₹27,500 FIRST!
 
 const GLOBAL_DISCOUNT_PERCENTAGE = 10; 
 

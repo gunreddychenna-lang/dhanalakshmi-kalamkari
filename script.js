@@ -1,16 +1,17 @@
 // === DHANALAKSHMI KALAMKARI - CLIENT WEBPAGE LOGIC (script.js) ===
 
-let currentSortStrategy = 'FABRIC_AND_PRICE'; 
-const TARGET_MIDDLE_PRICE = 26500;
-const FEATURED_FABRIC_FIRST = 'ikkath silk';
+// ⚙️ SORTING CONTROLS (Change these anytime to re-order your website)
+let currentSortStrategy = 'TARGET_PRICE_FIRST'; // 'TARGET_PRICE_FIRST' | 'MOST_VIEWED_FIRST' | 'WISHLIST_VAULT_FIRST' | 'FABRIC_AND_PRICE'
+const FEATURED_FABRIC_FIRST = 'kanchipuram';
+const TARGET_FEATURED_PRICE = 26500; // 🎯 Shows Kanchipuram sarees around ₹26,500 FIRST!
 
 const GLOBAL_DISCOUNT_PERCENTAGE = 10; 
 
 const CATALOG_API_URL = 'https://script.google.com/macros/s/AKfycbzAXbuROmepx2ZwMM3vyj3wOivE5EOVlbsn59KAosQZPn3qoB0mFIgVWu-TeuJht3j1ng/exec';
 const ANALYTICS_API_URL = 'https://script.google.com/macros/s/AKfycbyN2Kzp3kxYP0uQjf6RU4yZ9KtL_WmV2gn3TVdj3a-e_EIEN5nWDvyrNOOiPfzBGAvc/exec'; 
 
-const CACHE_KEY = 'kalamkari_products_cache_v3';
-const CACHE_TIME_KEY = 'kalamkari_cache_timestamp_v3';
+const CACHE_KEY = 'kalamkari_products_cache_v4';
+const CACHE_TIME_KEY = 'kalamkari_cache_timestamp_v4';
 const CACHE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes cache
 
 const CONTACT_PHONE_NUMBER = '919063374020';
@@ -238,8 +239,7 @@ function isFeaturedFabric(product) {
     return fabricStr.includes(target) || titleStr.includes(target) || catStr.includes(target) || rawTitleStr.includes(target);
 }
 
-// 🧵 SORT BY FABRIC TYPE FIRST, THEN PRICE (HIGH TO LOW)
-// 🧵 SORTING LOGIC: FEATURED FABRIC (KANCHIPURAM) FIRST, THEN OTHER FABRICS A-Z, THEN PRICE HIGH-TO-LOW
+// 🎯 MULTI-STRATEGY SORTING ENGINE (TARGET PRICE, MOST VIEWED, WISHLIST, FABRIC)
 function sortProductsByPrice(products, strategy = currentSortStrategy) {
     return [...products].sort((a, b) => {
         const priceA = Number(a.price) || 0;
@@ -247,19 +247,42 @@ function sortProductsByPrice(products, strategy = currentSortStrategy) {
         const fabricA = (a.fabric || '').trim().toLowerCase();
         const fabricB = (b.fabric || '').trim().toLowerCase();
 
-        if (strategy === 'FABRIC_AND_PRICE' || strategy === 'FABRIC_AZ') {
-            // 1. FEATURED FABRIC (Kanchipuram) ALWAYS COMES FIRST
+        // 1. 🔥 MOST VIEWED PRODUCTS FIRST
+        if (strategy === 'MOST_VIEWED_FIRST') {
+            const aRecentIndex = recentlyViewed.findIndex(p => p.code === a.code);
+            const bRecentIndex = recentlyViewed.findIndex(p => p.code === b.code);
+            if (aRecentIndex !== -1 && bRecentIndex === -1) return -1;
+            if (aRecentIndex === -1 && bRecentIndex !== -1) return 1;
+            if (aRecentIndex !== -1 && bRecentIndex !== -1) return aRecentIndex - bRecentIndex;
+        }
+
+        // 2. ❤️ WISHLIST / GALLERY VAULT PRODUCTS FIRST
+        if (strategy === 'WISHLIST_VAULT_FIRST') {
+            const aInWish = wishlist.some(p => p.code === a.code);
+            const bInWish = wishlist.some(p => p.code === b.code);
+            if (aInWish && !bInWish) return -1;
+            if (!aInWish && bInWish) return 1;
+        }
+
+        // 3. 🎯 TARGET PRICE FIRST (e.g., Kanchipuram at ₹26,500 FIRST!)
+        if (strategy === 'TARGET_PRICE_FIRST' || strategy === 'FABRIC_AND_PRICE') {
             const aIsFeatured = isFeaturedFabric(a);
             const bIsFeatured = isFeaturedFabric(b);
 
+            // Featured fabric (Kanchipuram) comes before other fabrics
             if (aIsFeatured && !bIsFeatured) return -1;
             if (!aIsFeatured && bIsFeatured) return 1;
 
-            // 2. OTHER FABRICS GROUPED ALPHABETICALLY A-Z
+            // Inside Kanchipuram: Sort by closeness to target price (₹26,500 first!)
+            if (aIsFeatured && bIsFeatured && TARGET_FEATURED_PRICE > 0) {
+                const diffA = Math.abs(priceA - TARGET_FEATURED_PRICE);
+                const diffB = Math.abs(priceB - TARGET_FEATURED_PRICE);
+                if (diffA !== diffB) return diffA - diffB; // Closest to ₹26,500 comes first!
+            }
+
+            // For other fabrics: Group A-Z, then Price High to Low
             const fabricCompare = fabricA.localeCompare(fabricB);
             if (fabricCompare !== 0) return fabricCompare;
-
-            // 3. INSIDE EACH FABRIC, HIGHEST PRICE FIRST
             return priceB - priceA;
         }
 
@@ -541,13 +564,12 @@ function generateCleanKalamkariTitle(customTitle, fabric, departmentKey, code) {
     return `Pure ${fabricName} Silk Srikalahasthi Pen Kalamkari ${deptSingular}`;
 }
 
-// ⚡ INSTANT PRODUCT FETCH WITH LOCALSTORAGE CACHING (0.1 SECONDS LOAD)
+// ⚡ INSTANT PRODUCT FETCH WITH LOCALSTORAGE CACHING
 async function fetchProducts() {
     const cachedData = localStorage.getItem(CACHE_KEY);
     const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
     const isCacheFresh = cachedData && cachedTime && (Date.now() - Number(cachedTime) < CACHE_EXPIRY_MS);
 
-    // 1. Render INSTANTLY from cache if available (0.01s load)
     if (cachedData) {
         try {
             const parsed = JSON.parse(cachedData);
@@ -564,9 +586,8 @@ async function fetchProducts() {
                 renderFilterButtons();
                 filterAndSearchProducts();
 
-                // If cache is fresh, fetch updated data in background silently
                 if (isCacheFresh) {
-                    fetchProductsFromAPI(true); // silent background update
+                    fetchProductsFromAPI(true);
                     return;
                 }
             }
@@ -575,7 +596,6 @@ async function fetchProducts() {
         }
     }
 
-    // 2. Otherwise show spinner and fetch live data
     await fetchProductsFromAPI(false);
 }
 

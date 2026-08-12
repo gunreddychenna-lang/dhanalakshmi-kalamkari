@@ -996,3 +996,69 @@ body.details-mode .main-header {
     .mrp-price-detail { font-size: 1.3rem; }
     .action-buttons button { min-height: 48px; font-size: 0.8rem; }
 }
+/* ==========================================
+   LUXURY SHIMMER SKELETON LOADING CARDS
+   ========================================== */
+
+@keyframes luxuryShimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.skeleton-card {
+    background: #FFFFFF;
+    border: 1px solid #EAE2D8;
+    padding: 1.1rem;
+    position: relative;
+    box-shadow: var(--shadow-luxury);
+    display: flex;
+    flex-direction: column;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.skeleton-box {
+    background: linear-gradient(90deg, #F3ECE1 25%, #FFFDF9 37%, #F3ECE1 63%);
+    background-size: 200% 100%;
+    animation: luxuryShimmer 1.4s infinite linear;
+    border-radius: 3px;
+}
+
+.skeleton-image {
+    width: 100%;
+    padding-top: 135%;
+    margin-bottom: 1rem;
+}
+
+.skeleton-title {
+    height: 1.2rem;
+    width: 85%;
+    margin: 0.6rem auto 0.4rem;
+}
+
+.skeleton-description {
+    height: 0.8rem;
+    width: 65%;
+    margin: 0 auto 0.8rem;
+}
+
+.skeleton-price {
+    height: 1.5rem;
+    width: 45%;
+    margin: 0.5rem auto 0.8rem;
+}
+
+.skeleton-btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+}
+
+.skeleton-btn {
+    height: 36px;
+}

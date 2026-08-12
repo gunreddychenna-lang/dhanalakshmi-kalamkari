@@ -1,13 +1,17 @@
 // === DHANALAKSHMI KALAMKARI - CLIENT WEBPAGE LOGIC (script.js) ===
 
-let currentSortStrategy = 'PRICE_HIGH_TO_LOW'; 
-const TARGET_MIDDLE_PRICE = 27500;
-const FEATURED_FABRIC_FIRST = 'Kanchipuram';
+let currentSortStrategy = 'FABRIC_AND_PRICE'; 
+const TARGET_MIDDLE_PRICE = 26500;
+const FEATURED_FABRIC_FIRST = 'ikkath silk';
 
 const GLOBAL_DISCOUNT_PERCENTAGE = 10; 
 
 const CATALOG_API_URL = 'https://script.google.com/macros/s/AKfycbzAXbuROmepx2ZwMM3vyj3wOivE5EOVlbsn59KAosQZPn3qoB0mFIgVWu-TeuJht3j1ng/exec';
 const ANALYTICS_API_URL = 'https://script.google.com/macros/s/AKfycbyN2Kzp3kxYP0uQjf6RU4yZ9KtL_WmV2gn3TVdj3a-e_EIEN5nWDvyrNOOiPfzBGAvc/exec'; 
+
+const CACHE_KEY = 'kalamkari_products_cache_v3';
+const CACHE_TIME_KEY = 'kalamkari_cache_timestamp_v3';
+const CACHE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes cache
 
 const CONTACT_PHONE_NUMBER = '919063374020';
 const DEFAULT_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960"%3E%3Crect width="720" height="960" fill="%23F8EEDC"/%3E%3Ctext x="50%25" y="48%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="%234A0202"%3EImage+Not+Available%3C/text%3E%3C/svg%3E';
@@ -128,15 +132,13 @@ function getGoogleDriveId(product) {
     return null;
 }
 
-// IMAGE URL GENERATOR WITH HD CDN PROXY
-function getProductImageUrl(product, width = 1200) {
+// ULTRA-FAST GOOGLE DRIVE IMAGE GENERATOR
+function getProductImageUrl(product, width = 450) {
     if (!product) return DEFAULT_IMAGE;
     
     const fileId = getGoogleDriveId(product);
     if (fileId) {
-        const fetchWidth = Math.max(width, 1600);
-        const highResDriveUrl = encodeURIComponent(`https://drive.google.com/thumbnail?id=${fileId}&sz=w${fetchWidth}`);
-        return `https://wsrv.nl/?url=${highResDriveUrl}&w=${width}&q=92`;
+        return `https://lh3.googleusercontent.com/d/${fileId}=w${width}-rw`;
     }
     
     const rawUrl = (product.imageLink || product.thumbnail || product.rawImageLink || '').trim();
@@ -145,16 +147,11 @@ function getProductImageUrl(product, width = 1200) {
     if (rawUrl.startsWith('data:') || rawUrl.startsWith('blob:')) {
         return rawUrl;
     }
-    
-    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-        return `https://wsrv.nl/?url=${encodeURIComponent(rawUrl)}&w=${width}&q=92`;
-    }
 
-    return DEFAULT_IMAGE;
+    return rawUrl;
 }
 
-// IMAGE FALLBACK HANDLER
-function setupImageFallback(imgElement, product, width = 1200) {
+function setupImageFallback(imgElement, product, width = 450) {
     const fileId = getGoogleDriveId(product);
     if (!fileId) return;
 
@@ -163,10 +160,7 @@ function setupImageFallback(imgElement, product, width = 1200) {
             imgElement.dataset.fallbackAttempted = "1";
             imgElement.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w${width}`;
         } else if (imgElement.dataset.fallbackAttempted === "1") {
-            imgElement.dataset.fallbackAttempted = "2";
-            imgElement.src = `https://lh3.googleusercontent.com/d/${fileId}`;
-        } else if (imgElement.dataset.fallbackAttempted === "2") {
-            imgElement.dataset.fallbackAttempted = "failed_all";
+            imgElement.dataset.fallbackAttempted = "failed";
             imgElement.src = DEFAULT_IMAGE;
         }
     };
@@ -176,7 +170,7 @@ function updateGoogleImageSchemaAndMeta(product) {
     if (!product) return;
     const pageTitle = `${product.title} (Code: ${product.code}) — Srikalahasti Pen Kalamkari Saree | Dhanalakshmi Kalamkari`;
     const pageDesc = `Buy authentic hand-painted ${product.fabric} Kalamkari artwork (${product.title}) with natural organic mineral dyes. Code: ${product.code}. Offer Price: ₹${new Intl.NumberFormat('en-IN').format(product.price)}. Direct from Dhanalakshmi Kalamkari master artisans in Srikalahasti.`;
-    const imageUrl = getProductImageUrl(product, 2000);
+    const imageUrl = getProductImageUrl(product, 1600);
     const productUrl = `https://www.dhanalakshmi-kalamkari.com/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
 
     document.title = pageTitle;
@@ -193,20 +187,13 @@ function updateGoogleImageSchemaAndMeta(product) {
     const ogUrl = document.getElementById('og-url');
     if (ogUrl) ogUrl.setAttribute('content', productUrl);
 
-    const twitterTitle = document.getElementById('twitter-title');
-    if (twitterTitle) twitterTitle.setAttribute('content', pageTitle);
-    const twitterDesc = document.getElementById('twitter-desc');
-    if (twitterDesc) twitterDesc.setAttribute('content', pageDesc);
-    const twitterImage = document.getElementById('twitter-image');
-    if (twitterImage) twitterImage.setAttribute('content', imageUrl);
-
     const schemaScript = document.getElementById('dynamic-product-schema');
     if (schemaScript) {
         const schemaData = {
             "@context": "https://schema.org/",
             "@type": "Product",
             "name": `Dhanalakshmi Kalamkari ${product.title}`,
-            "image": [imageUrl, getProductImageUrl(product, 1000)],
+            "image": [imageUrl, getProductImageUrl(product, 800)],
             "description": product.description || pageDesc,
             "sku": product.code,
             "mpn": product.code,
@@ -251,6 +238,8 @@ function isFeaturedFabric(product) {
     return fabricStr.includes(target) || titleStr.includes(target) || catStr.includes(target) || rawTitleStr.includes(target);
 }
 
+// 🧵 SORT BY FABRIC TYPE FIRST, THEN PRICE (HIGH TO LOW)
+// 🧵 SORTING LOGIC: FEATURED FABRIC (KANCHIPURAM) FIRST, THEN OTHER FABRICS A-Z, THEN PRICE HIGH-TO-LOW
 function sortProductsByPrice(products, strategy = currentSortStrategy) {
     return [...products].sort((a, b) => {
         const priceA = Number(a.price) || 0;
@@ -258,25 +247,24 @@ function sortProductsByPrice(products, strategy = currentSortStrategy) {
         const fabricA = (a.fabric || '').trim().toLowerCase();
         const fabricB = (b.fabric || '').trim().toLowerCase();
 
-        if (strategy === 'FEATURED_FIRST') {
+        if (strategy === 'FABRIC_AND_PRICE' || strategy === 'FABRIC_AZ') {
+            // 1. FEATURED FABRIC (Kanchipuram) ALWAYS COMES FIRST
             const aIsFeatured = isFeaturedFabric(a);
             const bIsFeatured = isFeaturedFabric(b);
 
             if (aIsFeatured && !bIsFeatured) return -1;
             if (!aIsFeatured && bIsFeatured) return 1;
+
+            // 2. OTHER FABRICS GROUPED ALPHABETICALLY A-Z
+            const fabricCompare = fabricA.localeCompare(fabricB);
+            if (fabricCompare !== 0) return fabricCompare;
+
+            // 3. INSIDE EACH FABRIC, HIGHEST PRICE FIRST
             return priceB - priceA;
         }
 
         if (strategy === 'PRICE_LOW_TO_HIGH') {
             return priceA - priceB;
-        } else if (strategy === 'FABRIC_AZ') {
-            const fabricCompare = fabricA.localeCompare(fabricB);
-            if (fabricCompare !== 0) return fabricCompare;
-            return priceB - priceA;
-        } else if (strategy === 'MIDDLE_BUDGET' || strategy === 'MIDDLE_BUDGET_FIRST') {
-            const distA = Math.abs(priceA - TARGET_MIDDLE_PRICE);
-            const distB = Math.abs(priceB - TARGET_MIDDLE_PRICE);
-            return distA - distB;
         } else {
             return priceB - priceA;
         }
@@ -367,105 +355,76 @@ function detectBrowser() {
 
 async function getGeoLocation() {
     try {
-        const res1 = await fetch('https://freeipapi.com/api/json');
-        if (res1.ok) {
-            const data = await res1.json();
-            if (data && data.cityName && data.cityName !== 'Unknown') {
-                return {
-                    city: data.cityName || 'Unknown',
-                    region: data.regionName || 'Unknown',
-                    country: data.countryName || 'Unknown',
-                    ip: data.ipAddress || 'Anonymized'
-                };
-            }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch('https://ipapi.co/json/', { signal: controller.signal }).catch(() => null);
+        clearTimeout(timeoutId);
+        
+        if (res && res.ok) {
+            const data = await res.json();
+            return {
+                city: data.city || 'Unknown',
+                region: data.region || 'Unknown',
+                country: data.country_name || 'Unknown',
+                ip: data.ip || 'Anonymized'
+            };
         }
     } catch (e) {}
-
-    try {
-        const res2 = await fetch('https://ipwho.is/');
-        if (res2.ok) {
-            const data = await res2.json();
-            if (data && data.success && data.city) {
-                return {
-                    city: data.city || 'Unknown',
-                    region: data.region || 'Unknown',
-                    country: data.country || 'Unknown',
-                    ip: data.ip || 'Anonymized'
-                };
-            }
-        }
-    } catch (e) {}
-
-    try {
-        const res3 = await fetch('https://ipapi.co/json/');
-        if (res3.ok) {
-            const data = await res3.json();
-            if (data && data.city) {
-                return {
-                    city: data.city || 'Unknown',
-                    region: data.region_code || data.region || 'Unknown',
-                    country: data.country_name || 'Unknown',
-                    ip: data.ip || 'Anonymized'
-                };
-            }
-        }
-    } catch (e) {}
-
     return { city: 'Unknown', region: 'Unknown', country: 'Unknown', ip: 'Anonymized' };
 }
 
 async function logVisitorTraffic() {
     if (isBotVisitor()) return;
 
-    const source = detectTrafficSource();
-    const browser = detectBrowser();
-    const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-
-    let visitorId = localStorage.getItem('kalamkari_visitor_id');
-    let visitorType = 'Returning';
-
-    if (!visitorId) {
-        visitorId = 'visitor-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
-        localStorage.setItem('kalamkari_visitor_id', visitorId);
-        visitorType = 'New';
-    }
-
-    let locationData = { city: 'Unknown', region: 'Unknown', country: 'Unknown', ip: 'Anonymized' };
-    const cachedGeo = sessionStorage.getItem('kalamkari_geo_cache');
-
-    if (cachedGeo && !cachedGeo.includes('"city":"Unknown"')) {
-        try { locationData = JSON.parse(cachedGeo); } catch (e) {}
-    } else {
-        locationData = await getGeoLocation();
-        if (locationData.city !== 'Unknown') {
-            sessionStorage.setItem('kalamkari_geo_cache', JSON.stringify(locationData));
-        }
-    }
-
-    const payload = JSON.stringify({
-        action: 'logTraffic',
-        isBot: false,
-        timestamp: timestamp,
-        source: source,
-        browser: browser,
-        pageUrl: window.location.href,
-        visitorId: visitorId,
-        visitorType: visitorType,
-        city: locationData.city,
-        region: locationData.region,
-        country: locationData.country,
-        ip: locationData.ip,
-        userAgent: navigator.userAgent
-    });
-
     try {
+        const source = detectTrafficSource();
+        const browser = detectBrowser();
+        const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+        let visitorId = localStorage.getItem('kalamkari_visitor_id');
+        let visitorType = 'Returning';
+
+        if (!visitorId) {
+            visitorId = 'visitor-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
+            localStorage.setItem('kalamkari_visitor_id', visitorId);
+            visitorType = 'New';
+        }
+
+        let locationData = { city: 'Unknown', region: 'Unknown', country: 'Unknown', ip: 'Anonymized' };
+        const cachedGeo = sessionStorage.getItem('kalamkari_geo_cache');
+
+        if (cachedGeo && !cachedGeo.includes('"city":"Unknown"')) {
+            try { locationData = JSON.parse(cachedGeo); } catch (e) {}
+        } else {
+            locationData = await getGeoLocation();
+            if (locationData.city !== 'Unknown') {
+                sessionStorage.setItem('kalamkari_geo_cache', JSON.stringify(locationData));
+            }
+        }
+
+        const payload = JSON.stringify({
+            action: 'logTraffic',
+            isBot: false,
+            timestamp: timestamp,
+            source: source,
+            browser: browser,
+            pageUrl: window.location.href,
+            visitorId: visitorId,
+            visitorType: visitorType,
+            city: locationData.city,
+            region: locationData.region,
+            country: locationData.country,
+            ip: locationData.ip,
+            userAgent: navigator.userAgent
+        });
+
         if (navigator.sendBeacon) {
             navigator.sendBeacon(ANALYTICS_API_URL, new Blob([payload], { type: 'text/plain' }));
         } else {
-            fetch(ANALYTICS_API_URL, { method: 'POST', mode: 'no-cors', body: payload });
+            fetch(ANALYTICS_API_URL, { method: 'POST', mode: 'no-cors', body: payload }).catch(() => {});
         }
         sessionStorage.setItem('trafficLogged', 'true');
-    } catch (error) {}
+    } catch (e) {}
 }
 
 const views = {
@@ -582,10 +541,53 @@ function generateCleanKalamkariTitle(customTitle, fabric, departmentKey, code) {
     return `Pure ${fabricName} Silk Srikalahasthi Pen Kalamkari ${deptSingular}`;
 }
 
+// ⚡ INSTANT PRODUCT FETCH WITH LOCALSTORAGE CACHING (0.1 SECONDS LOAD)
 async function fetchProducts() {
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+    const isCacheFresh = cachedData && cachedTime && (Date.now() - Number(cachedTime) < CACHE_EXPIRY_MS);
+
+    // 1. Render INSTANTLY from cache if available (0.01s load)
+    if (cachedData) {
+        try {
+            const parsed = JSON.parse(cachedData);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                allProducts = parsed;
+                allProducts = sortProductsByPrice(allProducts, currentSortStrategy);
+                if (!getDepartmentProducts(currentDepartment).length && allProducts.length) {
+                    currentDepartment = allProducts[0].departmentKey || 'saree';
+                }
+                filteredProducts = sortProductsByPrice(getDepartmentProducts(), currentSortStrategy);
+
+                if (elements.spinner) elements.spinner.style.display = 'none';
+                updateDepartmentUI();
+                renderFilterButtons();
+                filterAndSearchProducts();
+
+                // If cache is fresh, fetch updated data in background silently
+                if (isCacheFresh) {
+                    fetchProductsFromAPI(true); // silent background update
+                    return;
+                }
+            }
+        } catch (e) {
+            localStorage.removeItem(CACHE_KEY);
+        }
+    }
+
+    // 2. Otherwise show spinner and fetch live data
+    await fetchProductsFromAPI(false);
+}
+
+async function fetchProductsFromAPI(isBackground = false) {
     try {
-        if (elements.spinner) elements.spinner.style.display = 'block'; 
+        if (!isBackground && elements.spinner) {
+            elements.spinner.style.display = 'block'; 
+        }
+
         const response = await fetch(CATALOG_API_URL);
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
         const rawData = await response.json();
         const data = Array.isArray(rawData) ? rawData : (rawData.value || rawData.data || rawData.records || []);
         
@@ -609,7 +611,7 @@ async function fetchProducts() {
             return '';
         };
 
-        allProducts = data.map(item => {
+        const freshProducts = data.map(item => {
             function parsePrice(val) {
                 if (!val) return 0;
                 const cleaned = String(val).replace(/[^0-9.\-]/g, '');
@@ -654,26 +656,26 @@ async function fetchProducts() {
             };
         }).filter(item => item.code && item.price > 0);
 
-        allProducts = sortProductsByPrice(allProducts, currentSortStrategy);
-        if (!getDepartmentProducts(currentDepartment).length && allProducts.length) {
-            currentDepartment = allProducts[0].departmentKey || 'saree';
+        if (freshProducts.length > 0) {
+            allProducts = freshProducts;
+            localStorage.setItem(CACHE_KEY, JSON.stringify(allProducts));
+            localStorage.setItem(CACHE_TIME_KEY, String(Date.now()));
+
+            allProducts = sortProductsByPrice(allProducts, currentSortStrategy);
+            if (!getDepartmentProducts(currentDepartment).length && allProducts.length) {
+                currentDepartment = allProducts[0].departmentKey || 'saree';
+            }
+            filteredProducts = sortProductsByPrice(getDepartmentProducts(), currentSortStrategy);
+
+            if (elements.spinner) elements.spinner.style.display = 'none';
+            updateDepartmentUI();
+            renderFilterButtons();
+            filterAndSearchProducts();
         }
-        filteredProducts = sortProductsByPrice(getDepartmentProducts(), currentSortStrategy);
-
-        wishlist = wishlist.map(savedItem => {
-            const freshItem = allProducts.find(p => p.code === savedItem.code);
-            return freshItem || savedItem;
-        });
-        localStorage.setItem('kalamkariWishlist', JSON.stringify(wishlist));
-        updateWishlistCount();
-
-        if (elements.spinner) elements.spinner.style.display = 'none';
-        updateDepartmentUI();
-        renderFilterButtons();
-        filterAndSearchProducts();
     } catch (error) {
-        if (elements.spinner) {
-            elements.spinner.textContent = 'Failed to load Kalamkari collection. Please try again later.';
+        console.error("Error fetching product catalog:", error);
+        if (!allProducts.length && elements.spinner) {
+            elements.spinner.textContent = 'Failed to load Kalamkari collection. Please refresh or try again later.';
         }
     }
 }
@@ -687,7 +689,7 @@ function renderProducts(products, container, isHorizontal = false) {
         return;
     }
     
-    products.forEach(product => {
+    products.forEach((product, index) => {
         const card = document.createElement('div');
         card.className = 'product-card';
         card.dataset.code = product.code;
@@ -717,12 +719,19 @@ function renderProducts(products, container, isHorizontal = false) {
         const img = document.createElement('img');
         img.alt = `Dhanalakshmi Kalamkari ${product.title} Code ${product.code} (${product.fabric})`; 
         img.title = `Dhanalakshmi Kalamkari Srikalahasti — ${product.title}`;
-        img.loading = 'lazy';
+        img.decoding = 'async';
         
-        const primaryUrl = getProductImageUrl(product, 1200);
+        if (index < 4 && !isHorizontal) {
+            img.loading = 'eager';
+            img.setAttribute('fetchpriority', 'high');
+        } else {
+            img.loading = 'lazy';
+        }
+
+        const primaryUrl = getProductImageUrl(product, 450);
         img.src = primaryUrl;
 
-        setupImageFallback(img, product, 1200);
+        setupImageFallback(img, product, 450);
         imageWrapper.appendChild(img);
 
         if (discountPct > 0) {
@@ -1100,11 +1109,11 @@ function showProductDetails(product) {
 
     if (elements.detailImage) {
         delete elements.detailImage.dataset.fallbackAttempted;
-        const detailPrimaryUrl = getProductImageUrl(product, 2000);
+        const detailPrimaryUrl = getProductImageUrl(product, 1600);
         elements.detailImage.src = detailPrimaryUrl;
         elements.detailImage.alt = `Dhanalakshmi Kalamkari Hand-Painted Srikalahasti Pen Kalamkari ${product.title} Code ${product.code} (${product.fabric} Pure Silk Saree)`;
         elements.detailImage.title = `${product.title} - Click to Zoom Artwork Details`;
-        setupImageFallback(elements.detailImage, product, 2000);
+        setupImageFallback(elements.detailImage, product, 1600);
     }
 
     const detailImgBadge = document.getElementById('detail-image-discount-badge');
@@ -1173,7 +1182,7 @@ function closeOverlay() {
     if (!elements.overlay) return;
     elements.overlay.classList.add('hidden');
     if (elements.overlayImage) {
-        elements.overlayImage.src = ''; // Clears image src so no broken image icon appears
+        elements.overlayImage.src = ''; 
         elements.overlayImage.style.transform = 'scale(1)';
         elements.overlayImage.style.transformOrigin = '50% 50%';
         elements.overlayImage.style.cursor = 'zoom-in';

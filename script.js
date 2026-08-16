@@ -6,13 +6,12 @@ const TARGET_FEATURED_PRICE = 26500;
 // 👉 SET YOUR DISCOUNT PERCENTAGE HERE (e.g., 10 for 10% OFF, 15 for 15% OFF, 0 for no discount)
 const GLOBAL_DISCOUNT_PERCENTAGE = 10; 
 
-
 const CATALOG_API_URL = 'https://script.google.com/macros/s/AKfycbwxh2A4nVND1Bdv7FJBRRisONf3dC87cFtEynYjvwE03Agywoi4WtLk4ntlru3L4yKIXQ/exec';
 const ANALYTICS_API_URL = 'https://script.google.com/macros/s/AKfycbyN2Kzp3kxYP0uQjf6RU4yZ9KtL_WmV2gn3TVdj3a-e_EIEN5nWDvyrNOOiPfzBGAvc/exec'; 
 
-// Cache key updated to force instant refresh of MRPs
-const CACHE_KEY = 'kalamkari_products_cache_v8_exact_mrp';
-const CACHE_TIME_KEY = 'kalamkari_cache_timestamp_v8_exact_mrp';
+// Cache key updated to force instant refresh with discounts active
+const CACHE_KEY = 'kalamkari_products_cache_v10_discount_active';
+const CACHE_TIME_KEY = 'kalamkari_cache_timestamp_v10_discount_active';
 const CACHE_EXPIRY_MS = 3 * 60 * 1000; // 3 minutes
 
 const CONTACT_PHONE_NUMBER = '918688025096';
@@ -139,7 +138,7 @@ function setupImageFallback(imgElement, product, width = 450) {
 function updateGoogleImageSchemaAndMeta(product) {
     if (!product) return;
     const pageTitle = `${product.title} (Code: ${product.code}) — Srikalahasti Pen Kalamkari Saree | Dhanalakshmi Kalamkari`;
-    const pageDesc = `Buy authentic hand-painted ${product.fabric} Kalamkari artwork (${product.title}) with natural organic mineral dyes. Code: ${product.code}. Price: ₹${new Intl.NumberFormat('en-IN').format(product.price)}. Direct from Dhanalakshmi Kalamkari master artisans in Srikalahasti.`;
+    const pageDesc = `Buy authentic hand-painted ${product.fabric} Kalamkari artwork (${product.title}) with natural organic mineral dyes. Code: ${product.code}. Offer Price: ₹${new Intl.NumberFormat('en-IN').format(product.price)}. Direct from Dhanalakshmi Kalamkari master artisans in Srikalahasti.`;
     const imageUrl = getProductImageUrl(product, 1200);
     const productUrl = `https://www.dhanalakshmi-kalamkari.com/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
 
@@ -179,13 +178,15 @@ function isFeaturedFabric(product) {
 }
 
 function sortProductsByPrice(products, strategy = currentSortStrategy) {
+    const strat = String(strategy || '').toUpperCase();
+
     return [...products].sort((a, b) => {
         const priceA = Number(a.price) || Number(a.mrp) || 0;
         const priceB = Number(b.price) || Number(b.mrp) || 0;
         const fabricA = (a.fabric || '').trim().toLowerCase();
         const fabricB = (b.fabric || '').trim().toLowerCase();
 
-        if (strategy === 'MOST_VIEWED_FIRST') {
+        if (strat === 'MOST_VIEWED_FIRST') {
             const aRecentIndex = recentlyViewed.findIndex(p => p.code === a.code);
             const bRecentIndex = recentlyViewed.findIndex(p => p.code === b.code);
             if (aRecentIndex !== -1 && bRecentIndex === -1) return -1;
@@ -193,16 +194,17 @@ function sortProductsByPrice(products, strategy = currentSortStrategy) {
             if (aRecentIndex !== -1 && bRecentIndex !== -1) return aRecentIndex - bRecentIndex;
         }
 
-        if (strategy === 'WISHLIST_VAULT_FIRST') {
+        if (strat === 'WISHLIST_VAULT_FIRST') {
             const aInWish = wishlist.some(p => p.code === a.code);
             const bInWish = wishlist.some(p => p.code === b.code);
             if (aInWish && !bInWish) return -1;
             if (!aInWish && bInWish) return 1;
         }
 
-        if (strategy === 'PRICE_LOW_TO_HIGH') {
+        if (strat === 'LOWEST_PRICE_FIRST' || strat === 'PRICE_LOW_TO_HIGH') {
             return priceA - priceB;
         } else {
+            // Defaults to Highest Price First
             return priceB - priceA;
         }
     });
@@ -402,7 +404,6 @@ async function fetchProductsFromAPI() {
         const rawData = await response.json();
         const data = Array.isArray(rawData) ? rawData : (rawData.value || rawData.data || rawData.records || []);
         
-        // Helper to find column values regardless of exact casing, spaces, or dots
         const getFieldValue = (item, keys) => {
             const normalize = (str) => String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const normalizedEntries = Object.entries(item).map(([itemKey, value]) => [normalize(itemKey), value]);
@@ -445,31 +446,26 @@ async function fetchProductsFromAPI() {
             let qty = rawQty !== '' ? Number(rawQty) : 1;
             if (isNaN(qty)) qty = 1;
 
-            // 🎯 EXACT EXTRACTION FROM YOUR SHEET COLUMNS
-            let sheetMrp = parsePrice(getFieldValue(item, [
-                'mrp', 'm.r.p', 'm.r.p.', 'mrpprice', 'mrp price', 'mrp (inr)', 
-                'original price', 'originalprice', 'tag price', 'tagprice', 'retail price', 'market price'
+            // 🎯 Read raw price directly from sheet
+            let rawSheetPrice = parsePrice(getFieldValue(item, [
+                'price', 'selling price', 'sellingprice', 'rate', 'amount', 
+                'mrp', 'm.r.p', 'm.r.p.', 'mrpprice', 'original price'
             ]));
 
-            let sheetSellingPrice = parsePrice(getFieldValue(item, [
-                'price', 'selling price', 'sellingprice', 'offer price', 'offerprice', 
-                'rate', 'amount', 'final price', 'discount price', 'cost'
-            ]));
-
-            // Fallback: If price is in category/fabric name (e.g., "Crape Dupattas 4500")
-            if (!sheetMrp && !sheetSellingPrice) {
+            // Fallback if price is in category/fabric name (e.g. 4500)
+            if (!rawSheetPrice) {
                 const priceMatch = (category + " " + fabric).match(/\b\d{4,6}\b/);
-                if (priceMatch) {
-                    sheetSellingPrice = Number(priceMatch[0]);
-                }
+                if (priceMatch) rawSheetPrice = Number(priceMatch[0]);
             }
 
-            // Clean price logic (no fake discounts)
-            let finalMrp = sheetMrp;
-            let finalPrice = sheetSellingPrice;
+            // 🏷️ APPLY GLOBAL DISCOUNT PERCENTAGE (e.g. 10% OFF)
+            let finalMrp = rawSheetPrice;
+            let finalPrice = rawSheetPrice;
 
-            if (finalMrp && !finalPrice) finalPrice = finalMrp;
-            if (finalPrice && !finalMrp) finalMrp = finalPrice;
+            if (GLOBAL_DISCOUNT_PERCENTAGE > 0 && GLOBAL_DISCOUNT_PERCENTAGE < 100 && rawSheetPrice > 0) {
+                finalMrp = rawSheetPrice; // The original price in sheet is MRP
+                finalPrice = Math.round(rawSheetPrice * (1 - GLOBAL_DISCOUNT_PERCENTAGE / 100)); // The discounted price
+            }
 
             const description = String(getFieldValue(item, ['description', 'product description', 'desc'])).trim();
             const rawCustomTitle = String(getFieldValue(item, ['product name', 'saree name', 'dupatta name', 'item name', 'name', 'title'])).trim();
@@ -544,7 +540,7 @@ function renderProducts(products, container, isHorizontal = false) {
             }
         };
 
-        const displayPrice = product.price > 0 ? product.price : product.mrp;
+        const displayPrice = product.price;
         const displayMrp = product.mrp;
         const hasDiscount = displayMrp > displayPrice && displayPrice > 0;
         const discountPct = hasDiscount ? Math.round(((displayMrp - displayPrice) / displayMrp) * 100) : 0;
@@ -618,7 +614,7 @@ function renderProducts(products, container, isHorizontal = false) {
             ${shortDescription ? `<p class="product-card-description">${shortDescription}</p>` : ''}
             <div class="product-price-row">
                 ${hasDiscount ? `<span class="mrp-price">Rs. ${formattedMrp}</span>` : ''}
-                <span class="product-price">${displayPrice > 0 ? 'Rs. ' + formattedPrice : (displayMrp > 0 ? 'Rs. ' + formattedMrp : 'Price on Request')}</span>
+                <span class="product-price">${displayPrice > 0 ? 'Rs. ' + formattedPrice : 'Price on Request'}</span>
             </div>
             <div class="card-actions-row">
                 <button class="card-video-btn">📹 VIDEO CALL</button>
@@ -952,7 +948,7 @@ function showProductDetails(product) {
         setupImageFallback(elements.detailImage, product, 1200);
     }
 
-    const displayPrice = product.price > 0 ? product.price : product.mrp;
+    const displayPrice = product.price;
     const displayMrp = product.mrp;
     const hasDiscount = displayMrp > displayPrice && displayPrice > 0;
     const discountPct = hasDiscount ? Math.round(((displayMrp - displayPrice) / displayMrp) * 100) : 0;
@@ -979,7 +975,7 @@ function showProductDetails(product) {
     }
     
     if (elements.detailPrice) {
-        elements.detailPrice.textContent = displayPrice > 0 ? new Intl.NumberFormat('en-IN').format(displayPrice) : new Intl.NumberFormat('en-IN').format(displayMrp);
+        elements.detailPrice.textContent = new Intl.NumberFormat('en-IN').format(displayPrice);
     }
     
     if (elements.detailMrp) {
@@ -1093,8 +1089,8 @@ function buyNow(product = currentProduct) {
     if (!product) return;
     const visitorId = localStorage.getItem('kalamkari_visitor_id') || 'New';
     const productUrl = `https://www.dhanalakshmi-kalamkari.com/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
-    const effectivePrice = product.price || product.mrp;
-    const text = `Namaste Dhanalakshmi Kalamkari Workshop,\n\nI want to BUY this hand-painted Kalamkari saree artwork:\n\n• Code: ${product.code}\n• Title: ${product.title}\n• Fabric: ${product.fabric}\n• Price: INR ${new Intl.NumberFormat('en-IN').format(effectivePrice)}\n• Web Link: ${productUrl}\n\n• Ref ID: ${visitorId}\n\nPlease share payment details and shipping process.`;
+    const effectivePrice = product.price;
+    const text = `Namaste Dhanalakshmi Kalamkari Workshop,\n\nI want to BUY this hand-painted Kalamkari saree artwork:\n\n• Code: ${product.code}\n• Title: ${product.title}\n• Fabric: ${product.fabric}\n• Offer Price: INR ${new Intl.NumberFormat('en-IN').format(effectivePrice)} (MRP: INR ${new Intl.NumberFormat('en-IN').format(product.mrp)})\n• Web Link: ${productUrl}\n\n• Ref ID: ${visitorId}\n\nPlease share payment details and shipping process.`;
     
     window.open(`https://wa.me/${CONTACT_PHONE_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
 }
@@ -1103,8 +1099,8 @@ function bookVideoCall(product = currentProduct) {
     if (!product) return;
     const visitorId = localStorage.getItem('kalamkari_visitor_id') || 'New';
     const productUrl = `https://www.dhanalakshmi-kalamkari.com/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
-    const effectivePrice = product.price || product.mrp;
-    const text = `Namaste Dhanalakshmi Kalamkari Workshop,\n\nI would like to BOOK A LIVE VIDEO CALL to inspect this hand-painted Kalamkari saree artwork:\n\n• Code: ${product.code}\n• Title: ${product.title}\n• Fabric: ${product.fabric}\n• Price: INR ${new Intl.NumberFormat('en-IN').format(effectivePrice)}\n• Web Link: ${productUrl}\n\n• Ref ID: ${visitorId}\n\nPlease let me know your available time slots.`;
+    const effectivePrice = product.price;
+    const text = `Namaste Dhanalakshmi Kalamkari Workshop,\n\nI would like to BOOK A LIVE VIDEO CALL to inspect this hand-painted Kalamkari saree artwork:\n\n• Code: ${product.code}\n• Title: ${product.title}\n• Fabric: ${product.fabric}\n• Offer Price: INR ${new Intl.NumberFormat('en-IN').format(effectivePrice)} (MRP: INR ${new Intl.NumberFormat('en-IN').format(product.mrp)})\n• Web Link: ${productUrl}\n\n• Ref ID: ${visitorId}\n\nPlease let me know your available time slots.`;
     
     window.open(`https://wa.me/${CONTACT_PHONE_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
 }

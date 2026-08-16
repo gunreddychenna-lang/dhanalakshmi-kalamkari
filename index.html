@@ -1,5 +1,4 @@
-﻿--- START OF FILE index.html ---
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -35,20 +34,24 @@
     <meta property="og:description" id="og-desc" content="Buy 100% authentic hand-painted Srikalahasti Pen Kalamkari pure silk sarees directly from Dhanalakshmi Kalamkari master artisans since 1984. Live video call booking available.">
     <meta property="og:image" id="og-image" content="https://www.dhanalakshmi-kalamkari.com/Banner.png">
     <meta property="og:url" id="og-url" content="https://www.dhanalakshmi-kalamkari.com/">
-<!-- HIGH-SPEED GOOGLE DRIVE CDN PRECONNECT -->
-<link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
-<link rel="preconnect" href="https://drive.google.com" crossorigin>
+
+    <!-- HIGH-SPEED PRECONNECTS FOR INSTANT ASSET LOADING -->
+    <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+    <link rel="preconnect" href="https://drive.google.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <!-- TWITTER CARD META TAGS -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" id="twitter-title" content="Kalamkari Sarees — Hand-Painted Srikalahasti Pen Kalamkari | Dhanalakshmi Kalamkari">
     <meta name="twitter:description" id="twitter-desc" content="Buy authentic hand-painted Srikalahasti Pen Kalamkari silk sarees directly from master artisans. Free shipping across India & express worldwide delivery.">
     <meta name="twitter:image" id="twitter-image" content="https://www.dhanalakshmi-kalamkari.com/Banner.png">
 
-    <link rel="icon" href="favicon.png" sizes="192x192" type="image/png">
-    <link rel="apple-touch-icon" href="favicon.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- EMBEDDED INLINE FAVICON (ZERO 404 NETWORK REQUESTS) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%234A0303'/%3E%3Ctext y='55%25' x='50%25' text-anchor='middle' dominant-baseline='central' font-family='serif' font-size='48' fill='%23D4AF37'%3ED%3C/text%3E%3C/svg%3E" type="image/svg+xml">
+    
+    <!-- NON-BLOCKING FONTS -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
     <!-- STRUCTURED DATA SCHEMAS -->
@@ -107,11 +110,18 @@
         </svg>
     </a>
 
-    <!-- MAIN HEADER BANNER IMAGE (Banner.png) -->
+    <!-- MAIN HEADER BANNER IMAGE (Banner.png with eager load) -->
     <header class="main-header">
         <h1 class="sr-only">DHANALAKSHMI KALAMKARI — SRIKALAHASTI PEN KALAMKARI SILK SAREES</h1>
         <div class="banner-container">
-            <img src="Banner.png" alt="Dhanalakshmi Kalamkari — Srikalahasti Pen Kalamkari Silk Sarees Header Banner" class="header-banner-img" onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src='Banner.jpg';}else if(this.dataset.fallback==1){this.dataset.fallback=2;this.src='Banner.jpeg';}">
+            <img src="Banner.png" 
+                 alt="Dhanalakshmi Kalamkari — Srikalahasti Pen Kalamkari Silk Sarees Header Banner" 
+                 class="header-banner-img" 
+                 width="2294" 
+                 height="464"
+                 fetchpriority="high"
+                 decoding="sync"
+                 onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src='Banner.jpg';}else if(this.dataset.fallback==1){this.dataset.fallback=2;this.src='Banner.jpeg';}">
         </div>
     </header>
 
@@ -139,7 +149,7 @@
     <main class="container">
         <!-- CATALOGUE VIEW -->
         <div id="catalogue-view" class="view active">
-            <div id="loading-spinner" class="spinner">
+            <div id="loading-spinner" class="spinner" style="display: none;">
                 <div class="spinner-icon"></div>
                 <p>Unveiling Hand-Painted Kalamkari Saree Masterpieces...</p>
                 <p class="spinner-subtext">Organic mineral colors maturing on hand-spun pure silks</p>
@@ -158,7 +168,7 @@
             <div class="product-details-container">
                 <div class="product-image-section">
                     <div class="detail-image-wrapper">
-                        <img id="detail-image" src="" alt="Srikalahasti Pen Kalamkari Hand-Painted Silk Saree">
+                        <img id="detail-image" src="" alt="Srikalahasti Pen Kalamkari Hand-Painted Silk Saree" loading="eager" decoding="async">
                         <span id="detail-image-discount-badge" class="card-discount-badge" style="display: none;">10% OFF</span>
                         <div class="luxury-frame-overlay"></div>
                         <div class="detail-quick-actions">
@@ -332,7 +342,6 @@
         </div>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="script.js" defer></script>
 </body>
 </html>
---- END OF FILE index.html ---

@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # SITEMAP LOCATION
-Sitemap: https://www.kailash-kalamkari.com/sitemap.xml
+Sitemap: https://www.dhanalakshmi-kalamkari.com/sitemap.xml
 
 # BLOCK BAD BOTS & CONTENT SCRAPERS
 User-agent: GPTBot

@@ -1,20 +1,22 @@
 // ⚙️ EXACT PRICE & MRP CONFIGURATION
-let currentSortStrategy = 'highest_price_first'; // Options: 'highest_price_first', 'lowest_price_first', 'most_viewed_first', 'wishlist_vault_first'
+let currentSortStrategy = 'highest_price_first'; // 'highest_price_first', 'lowest_price_first'
 const FEATURED_FABRIC_FIRST = 'kanchipuram';
 const TARGET_FEATURED_PRICE = 26500;
 
 // 👉 SET YOUR DISCOUNT PERCENTAGE HERE (e.g., 10 for 10% OFF, 15 for 15% OFF, 0 for no discount)
 const GLOBAL_DISCOUNT_PERCENTAGE = 10; 
+const USD_EXCHANGE_RATE = 86.5; // Approx USD per INR
 
 const CATALOG_API_URL = 'https://script.google.com/macros/s/AKfycbwxh2A4nVND1Bdv7FJBRRisONf3dC87cFtEynYjvwE03Agywoi4WtLk4ntlru3L4yKIXQ/exec';
 const ANALYTICS_API_URL = 'https://script.google.com/macros/s/AKfycbyN2Kzp3kxYP0uQjf6RU4yZ9KtL_WmV2gn3TVdj3a-e_EIEN5nWDvyrNOOiPfzBGAvc/exec'; 
 
-// Cache key updated to force instant refresh with discounts active
-const CACHE_KEY = 'kalamkari_products_cache_v10_discount_active';
-const CACHE_TIME_KEY = 'kalamkari_cache_timestamp_v10_discount_active';
+// Unified primary sales phone number across website & buttons
+const CONTACT_PHONE_NUMBER = '918688025096'; // +91 8688025096
+
+const CACHE_KEY = 'kalamkari_products_cache_v11_sales_boost';
+const CACHE_TIME_KEY = 'kalamkari_cache_timestamp_v11_sales_boost';
 const CACHE_EXPIRY_MS = 3 * 60 * 1000; // 3 minutes
 
-const CONTACT_PHONE_NUMBER = '918688025096';
 const DEFAULT_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960"%3E%3Crect width="720" height="960" fill="%23F8EEDC"/%3E%3Ctext x="50%25" y="48%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="%234A0202"%3EImage+Not+Available%3C/text%3E%3C/svg%3E';
 
 const DEPARTMENTS = [
@@ -157,49 +159,12 @@ function updateGoogleImageSchemaAndMeta(product) {
     if (ogUrl) ogUrl.setAttribute('content', productUrl);
 }
 
-function isFeaturedFabric(product) {
-    if (!FEATURED_FABRIC_FIRST || FEATURED_FABRIC_FIRST.toLowerCase() === 'none') return false;
-
-    const target = FEATURED_FABRIC_FIRST.toLowerCase().trim();
-    const fabricStr = (product.fabric || '').toLowerCase();
-    const titleStr = (product.title || '').toLowerCase();
-    const catStr = (product.category || '').toLowerCase();
-
-    if (target.includes('kanchi')) {
-        const kanchiAliases = ['kanchipuram', 'kanchi', 'kanjeevaram', 'kanjivaram'];
-        return kanchiAliases.some(alias => 
-            fabricStr.includes(alias) || 
-            titleStr.includes(alias) || 
-            catStr.includes(alias)
-        );
-    }
-
-    return fabricStr.includes(target) || titleStr.includes(target) || catStr.includes(target);
-}
-
 function sortProductsByPrice(products, strategy = currentSortStrategy) {
     const strat = String(strategy || '').toUpperCase();
 
     return [...products].sort((a, b) => {
         const priceA = Number(a.price) || Number(a.mrp) || 0;
         const priceB = Number(b.price) || Number(b.mrp) || 0;
-        const fabricA = (a.fabric || '').trim().toLowerCase();
-        const fabricB = (b.fabric || '').trim().toLowerCase();
-
-        if (strat === 'MOST_VIEWED_FIRST') {
-            const aRecentIndex = recentlyViewed.findIndex(p => p.code === a.code);
-            const bRecentIndex = recentlyViewed.findIndex(p => p.code === b.code);
-            if (aRecentIndex !== -1 && bRecentIndex === -1) return -1;
-            if (aRecentIndex === -1 && bRecentIndex !== -1) return 1;
-            if (aRecentIndex !== -1 && bRecentIndex !== -1) return aRecentIndex - bRecentIndex;
-        }
-
-        if (strat === 'WISHLIST_VAULT_FIRST') {
-            const aInWish = wishlist.some(p => p.code === a.code);
-            const bInWish = wishlist.some(p => p.code === b.code);
-            if (aInWish && !bInWish) return -1;
-            if (!aInWish && bInWish) return 1;
-        }
 
         if (strat === 'LOWEST_PRICE_FIRST' || strat === 'PRICE_LOW_TO_HIGH') {
             return priceA - priceB;
@@ -257,7 +222,7 @@ function updateDepartmentUI() {
     });
 
     if (elements.searchInput) {
-        elements.searchInput.placeholder = `Search ${activeDepartment.label.toLowerCase()} by code, fabric or design...`;
+        elements.searchInput.placeholder = `Search ${activeDepartment.label.toLowerCase()} by code (e.g. KS01), fabric or design...`;
     }
 }
 
@@ -299,11 +264,16 @@ const elements = {
     detailDescription: document.getElementById('detail-description'),
     detailPrice: document.getElementById('detail-price'),
     detailMrp: document.getElementById('detail-mrp'),
+    detailUsdPrice: document.getElementById('detail-usd-price'),
     
     addToWishlistBtn: document.getElementById('wishlist-btn'),
     wishlistBtnText: document.getElementById('wishlist-btn-text'),
     wishlistBtnIcon: document.getElementById('wishlist-btn-icon'),
-    videoCallBtn: document.getElementById('video-call-btn')
+    videoCallBtn: document.getElementById('video-call-btn'),
+    detailBuyBtn: document.getElementById('detail-buy-btn'),
+    mobileStickyVideoBtn: document.getElementById('mobile-sticky-video-btn'),
+    mobileStickyBuyBtn: document.getElementById('mobile-sticky-buy-btn'),
+    mobileStickyBar: document.getElementById('mobile-sticky-buy-bar')
 };
 
 function scrollToDepartment(smooth = true) {
@@ -446,25 +416,22 @@ async function fetchProductsFromAPI() {
             let qty = rawQty !== '' ? Number(rawQty) : 1;
             if (isNaN(qty)) qty = 1;
 
-            // 🎯 Read raw price directly from sheet
             let rawSheetPrice = parsePrice(getFieldValue(item, [
                 'price', 'selling price', 'sellingprice', 'rate', 'amount', 
                 'mrp', 'm.r.p', 'm.r.p.', 'mrpprice', 'original price'
             ]));
 
-            // Fallback if price is in category/fabric name (e.g. 4500)
             if (!rawSheetPrice) {
                 const priceMatch = (category + " " + fabric).match(/\b\d{4,6}\b/);
                 if (priceMatch) rawSheetPrice = Number(priceMatch[0]);
             }
 
-            // 🏷️ APPLY GLOBAL DISCOUNT PERCENTAGE (e.g. 10% OFF)
             let finalMrp = rawSheetPrice;
             let finalPrice = rawSheetPrice;
 
             if (GLOBAL_DISCOUNT_PERCENTAGE > 0 && GLOBAL_DISCOUNT_PERCENTAGE < 100 && rawSheetPrice > 0) {
-                finalMrp = rawSheetPrice; // The original price in sheet is MRP
-                finalPrice = Math.round(rawSheetPrice * (1 - GLOBAL_DISCOUNT_PERCENTAGE / 100)); // The discounted price
+                finalMrp = rawSheetPrice;
+                finalPrice = Math.round(rawSheetPrice * (1 - GLOBAL_DISCOUNT_PERCENTAGE / 100));
             }
 
             const description = String(getFieldValue(item, ['description', 'product description', 'desc'])).trim();
@@ -516,7 +483,7 @@ function renderProducts(products, container, isHorizontal = false) {
     container.innerHTML = '';
     
     if (products.length === 0) {
-        container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--color-haldi-gold); padding: 3rem 0; font-family: var(--font-heritage); font-size: 1.1rem;">No authentic hand-painted Kalamkari artworks found matching your criteria.</p>';
+        container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--color-royal-gold); padding: 3rem 0; font-family: var(--font-heritage); font-size: 1.1rem;">No authentic hand-painted Kalamkari artworks found matching your criteria.</p>';
         return;
     }
     
@@ -547,6 +514,7 @@ function renderProducts(products, container, isHorizontal = false) {
 
         const formattedPrice = new Intl.NumberFormat('en-IN').format(displayPrice);
         const formattedMrp = new Intl.NumberFormat('en-IN').format(displayMrp);
+        const usdApprox = displayPrice > 0 ? Math.round(displayPrice / USD_EXCHANGE_RATE) : null;
 
         const imageWrapper = document.createElement('div');
         imageWrapper.className = 'product-image-wrapper';
@@ -572,6 +540,12 @@ function renderProducts(products, container, isHorizontal = false) {
 
         setupImageFallback(img, product, 450);
         imageWrapper.appendChild(img);
+
+        // 1-OF-1 EXCLUSIVITY BADGE
+        const exclusivityTag = document.createElement('span');
+        exclusivityTag.className = 'card-exclusive-badge';
+        exclusivityTag.textContent = '1-of-1 Original';
+        imageWrapper.appendChild(exclusivityTag);
 
         if (hasDiscount && discountPct > 0) {
             const discountBadge = document.createElement('span');
@@ -607,18 +581,21 @@ function renderProducts(products, container, isHorizontal = false) {
 
         const info = document.createElement('div');
         info.className = 'product-info';
-        const shortDescription = product.description ? `${String(product.description).trim().slice(0, 100)}${product.description.length > 100 ? '...' : ''}` : '';
+        const shortDescription = product.description ? `${String(product.description).trim().slice(0, 95)}${product.description.length > 95 ? '...' : ''}` : '';
         
         info.innerHTML = `
+            <div class="product-code-tag">CODE: ${product.code}</div>
             <h3 class="product-title">${product.title}</h3>
             ${shortDescription ? `<p class="product-card-description">${shortDescription}</p>` : ''}
             <div class="product-price-row">
-                ${hasDiscount ? `<span class="mrp-price">Rs. ${formattedMrp}</span>` : ''}
-                <span class="product-price">${displayPrice > 0 ? 'Rs. ' + formattedPrice : 'Price on Request'}</span>
+                ${hasDiscount ? `<span class="mrp-price">₹${formattedMrp}</span>` : ''}
+                <span class="product-price">${displayPrice > 0 ? '₹' + formattedPrice : 'Price on Request'}</span>
+                ${usdApprox ? `<span class="usd-badge">(~$${usdApprox} USD)</span>` : ''}
             </div>
+            <div class="card-trust-pill">🌿 100% Hand-Drawn • Natural Dyes</div>
             <div class="card-actions-row">
-                <button class="card-video-btn">📹 VIDEO CALL</button>
-                <button class="card-buy-btn">🛍️ BUY NOW</button>
+                <button class="card-video-btn" title="Book Live Video Inspection">📹 VIDEO CALL</button>
+                <button class="card-buy-btn" title="Order directly on WhatsApp">💬 BUY NOW</button>
             </div>
         `;
 
@@ -808,8 +785,10 @@ function showView(viewName) {
     
     if (viewName === 'details') {
         document.body.classList.add('details-mode');
+        if (elements.mobileStickyBar) elements.mobileStickyBar.style.display = 'flex';
     } else {
         document.body.classList.remove('details-mode');
+        if (elements.mobileStickyBar) elements.mobileStickyBar.style.display = 'none';
         if (viewName === 'catalogue') {
             scrollToDepartment(true);
             document.title = "Kalamkari Sarees — Hand-Painted Srikalahasti Pen Kalamkari Silk Sarees | Dhanalakshmi Kalamkari";
@@ -978,6 +957,16 @@ function showProductDetails(product) {
         elements.detailPrice.textContent = new Intl.NumberFormat('en-IN').format(displayPrice);
     }
     
+    if (elements.detailUsdPrice) {
+        if (displayPrice > 0) {
+            const usdVal = Math.round(displayPrice / USD_EXCHANGE_RATE);
+            elements.detailUsdPrice.textContent = `(Approx. $${usdVal} USD / Worldwide Delivery)`;
+            elements.detailUsdPrice.style.display = 'inline-block';
+        } else {
+            elements.detailUsdPrice.style.display = 'none';
+        }
+    }
+
     if (elements.detailMrp) {
         if (hasDiscount) {
             elements.detailMrp.textContent = `INR ${new Intl.NumberFormat('en-IN').format(displayMrp)}`;
@@ -1085,22 +1074,43 @@ function updateWishlistCount() {
     if (elements.wishlistCount) elements.wishlistCount.textContent = wishlist.length;
 }
 
+// 💬 HIGH CONVERTING WHATSAPP CLOSING MESSAGE
 function buyNow(product = currentProduct) {
     if (!product) return;
-    const visitorId = localStorage.getItem('kalamkari_visitor_id') || 'New';
     const productUrl = `https://www.dhanalakshmi-kalamkari.com/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
     const effectivePrice = product.price;
-    const text = `Namaste Dhanalakshmi Kalamkari Workshop,\n\nI want to BUY this hand-painted Kalamkari saree artwork:\n\n• Code: ${product.code}\n• Title: ${product.title}\n• Fabric: ${product.fabric}\n• Offer Price: INR ${new Intl.NumberFormat('en-IN').format(effectivePrice)} (MRP: INR ${new Intl.NumberFormat('en-IN').format(product.mrp)})\n• Web Link: ${productUrl}\n\n• Ref ID: ${visitorId}\n\nPlease share payment details and shipping process.`;
+    const formattedPrice = new Intl.NumberFormat('en-IN').format(effectivePrice);
+    
+    const text = `Namaste Dhanalakshmi Kalamkari Workshop 🙏
+
+I want to ORDER this authentic hand-painted Kalamkari Saree:
+
+• Product Code: ${product.code}
+• Fabric: ${product.fabric}
+• Price: ₹${formattedPrice}
+• Artwork Link: ${productUrl}
+
+Please confirm availability and share your UPI / Bank payment details for booking.`;
     
     window.open(`https://wa.me/${CONTACT_PHONE_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
 }
 
 function bookVideoCall(product = currentProduct) {
     if (!product) return;
-    const visitorId = localStorage.getItem('kalamkari_visitor_id') || 'New';
     const productUrl = `https://www.dhanalakshmi-kalamkari.com/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
     const effectivePrice = product.price;
-    const text = `Namaste Dhanalakshmi Kalamkari Workshop,\n\nI would like to BOOK A LIVE VIDEO CALL to inspect this hand-painted Kalamkari saree artwork:\n\n• Code: ${product.code}\n• Title: ${product.title}\n• Fabric: ${product.fabric}\n• Offer Price: INR ${new Intl.NumberFormat('en-IN').format(effectivePrice)} (MRP: INR ${new Intl.NumberFormat('en-IN').format(product.mrp)})\n• Web Link: ${productUrl}\n\n• Ref ID: ${visitorId}\n\nPlease let me know your available time slots.`;
+    const formattedPrice = new Intl.NumberFormat('en-IN').format(effectivePrice);
+
+    const text = `Namaste Dhanalakshmi Kalamkari Workshop 🙏
+
+I would like to BOOK A LIVE VIDEO CALL inspection for this Saree:
+
+• Product Code: ${product.code}
+• Fabric: ${product.fabric}
+• Price: ₹${formattedPrice}
+• Link: ${productUrl}
+
+Please let me know your available time slot to inspect the pallu, borders & artwork over video call.`;
     
     window.open(`https://wa.me/${CONTACT_PHONE_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
 }
@@ -1122,6 +1132,10 @@ function setupEventListeners() {
     
     if (elements.addToWishlistBtn) elements.addToWishlistBtn.addEventListener('click', () => toggleWishlist(currentProduct));
     if (elements.videoCallBtn) elements.videoCallBtn.addEventListener('click', () => bookVideoCall(currentProduct));
+    if (elements.detailBuyBtn) elements.detailBuyBtn.addEventListener('click', () => buyNow(currentProduct));
+
+    if (elements.mobileStickyVideoBtn) elements.mobileStickyVideoBtn.addEventListener('click', () => bookVideoCall(currentProduct));
+    if (elements.mobileStickyBuyBtn) elements.mobileStickyBuyBtn.addEventListener('click', () => buyNow(currentProduct));
 
     const floatingWishlistBtn = document.getElementById('detail-floating-wishlist-btn');
     if (floatingWishlistBtn) floatingWishlistBtn.addEventListener('click', () => toggleWishlist(currentProduct));
@@ -1131,6 +1145,13 @@ function setupEventListeners() {
             if (views.details && views.details.classList.contains('active')) {
                 showView('catalogue');
             }
+            filterAndSearchProducts();
+        });
+    }
+
+    if (elements.sortSelect) {
+        elements.sortSelect.addEventListener('change', (e) => {
+            currentSortStrategy = e.target.value;
             filterAndSearchProducts();
         });
     }

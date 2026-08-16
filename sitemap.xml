@@ -3,26 +3,26 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   
   <url>
-    <loc>https://www.kailash-kalamkari.com/</loc>
+    <loc>https://www.dhanalakshmi-kalamkari.com/</loc>
     <lastmod>2026-07-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://www.kailash-kalamkari.com/logo.jpeg</image:loc>
-      <image:title>Kailash Kalamkari Hand-Painted Srikalahasti Logo</image:title>
-      <image:caption>Authentic Hand-Painted Kalamkari Silk Sarees Logo</image:caption>
+      <image:loc>https://www.dhanalakshmi-kalamkari.com/Banner.png</image:loc>
+      <image:title>Dhanalakshmi Kalamkari Hand-Painted Srikalahasti Sarees Banner</image:title>
+      <image:caption>Authentic Hand-Painted Kalamkari Pure Silk Sarees</image:caption>
     </image:image>
   </url>
 
   <url>
-    <loc>https://www.kailash-kalamkari.com/?department=saree</loc>
+    <loc>https://www.dhanalakshmi-kalamkari.com/?department=saree</loc>
     <lastmod>2026-07-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://www.kailash-kalamkari.com/?department=dupatta</loc>
+    <loc>https://www.dhanalakshmi-kalamkari.com/?department=dupatta</loc>
     <lastmod>2026-07-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

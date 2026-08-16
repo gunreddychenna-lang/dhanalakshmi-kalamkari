@@ -1,5 +1,3 @@
-// === DHANALAKSHMI KALAMKARI - CLIENT WEBPAGE LOGIC (script.js) ===
-
 // ⚙️ SORTING CONTROLS
 let currentSortStrategy = 'MOST_VIEWED_FIRST';// Options: 'PRICE_LOW_TO_HIGH', 'PRICE_HIGH_TO_LOW', 'TARGET_PRICE_FIRST', 'MOST_VIEWED_FIRST', 'WISHLIST_VAULT_FIRST', 'FABRIC_AND_PRICE'
 const FEATURED_FABRIC_FIRST = 'kanchipuram';
@@ -484,6 +482,7 @@ const elements = {
     backFromWishlistBtn: document.getElementById('back-from-wishlist'),
     emptyWishlistMsg: document.getElementById('wishlist-empty'),
     
+    detailCode: document.getElementById('detail-code'),
     detailImage: document.getElementById('detail-image'),
     detailImageSection: document.querySelector('.product-image-section'),
     overlay: document.getElementById('image-overlay'),
@@ -1144,6 +1143,8 @@ function showProductDetails(product) {
     const params = new URLSearchParams(window.location.search);
     const fabricParam = params.get('fabric') || (product.fabric ? product.fabric.toLowerCase().replace(/\s+/g, ' ').trim() : 'all');
     syncFabricFilterUI(fabricParam);
+
+    if (elements.detailCode) elements.detailCode.textContent = product.code || '';
 
     if (elements.detailImage) {
         delete elements.detailImage.dataset.fallbackAttempted;

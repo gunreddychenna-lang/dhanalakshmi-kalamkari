@@ -634,26 +634,9 @@ body.details-mode .main-header {
     transform: scale(1.04);
 }
 
-.card-exclusive-badge {
-    position: absolute;
-    top: 0.7rem;
-    left: 0.7rem;
-    background: #1A0203;
-    color: var(--color-champagne-gold);
-    border: 1px solid var(--color-royal-gold);
-    font-family: var(--font-heritage);
-    font-size: 0.68rem;
-    font-weight: 700;
-    padding: 0.25rem 0.55rem;
-    border-radius: 2px;
-    z-index: 12;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-
 .card-discount-badge {
     position: absolute;
-    top: 2.2rem;
+    top: 0.7rem;
     left: 0.7rem;
     background: #EBF4EC;
     color: #166B33;
@@ -774,12 +757,6 @@ body.details-mode .main-header {
     font-size: 1.25rem;
     font-weight: 800;
     color: var(--color-temple-crimson);
-}
-
-.usd-badge {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #666;
 }
 
 .card-trust-pill {
@@ -931,16 +908,6 @@ body.details-mode .main-header {
     color: var(--color-royal-maroon);
 }
 
-.masterpiece-badge {
-    background: #1A0203;
-    color: var(--color-champagne-gold);
-    border: 1px solid var(--color-royal-gold);
-    font-size: 0.78rem;
-    font-weight: 700;
-    padding: 0.35rem 0.75rem;
-    border-radius: 4px;
-}
-
 .detail-title {
     font-family: var(--font-heritage);
     font-size: clamp(1.6rem, 3.5vw, 2.2rem);
@@ -991,19 +958,6 @@ body.details-mode .main-header {
     font-size: 2.3rem;
     font-weight: 800;
     color: var(--color-temple-crimson);
-}
-
-.usd-price-tag {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #444;
-}
-
-.price-subtext {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #186B35;
-    margin-top: 0.4rem;
 }
 
 .detail-trust-box {
@@ -1394,4 +1348,13 @@ body.details-mode .main-header {
 
 .skeleton-btn {
     height: 36px;
+}
+.product-image-wrapper img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 1; /* Always visible */
+    transition: opacity 0.3s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }

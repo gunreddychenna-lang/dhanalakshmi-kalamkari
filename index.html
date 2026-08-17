@@ -35,7 +35,7 @@
     <meta property="og:image" id="og-image" content="https://www.dhanalakshmi-kalamkari.com/Banner.png">
     <meta property="og:url" id="og-url" content="https://www.dhanalakshmi-kalamkari.com/">
 
-    <!-- HIGH-SPEED PRECONNECTS FOR INSTANT ASSET LOADING -->
+    <!-- HIGH-SPEED PRECONNECTS -->
     <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
     <link rel="preconnect" href="https://drive.google.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -125,9 +125,9 @@
         </div>
     </header>
 
-    <!-- TRUST STRIP -->
+    <!-- HORIZONTAL TRUST FEATURES STRIP -->
     <section class="trust-features-strip" aria-label="Authenticity Guarantees">
-        <div class="trust-grid">
+        <div class="trust-scroll-wrapper">
             <div class="trust-item">
                 <span class="trust-icon">🌿</span>
                 <div class="trust-text"><strong>100% Hand-Painted</strong><span>Pure Pen Kalamkari Art</span></div>
@@ -152,31 +152,34 @@
         <section class="department-bar-container" aria-label="Product Categories">
             <div class="department-bar">
                 <button class="department-btn active" data-department="Saree" title="Browse Kalamkari Sarees">
-                    <span class="btn-traditional-dot"></span> Kalamkari Sarees
+                    <span class="btn-traditional-dot"></span> Sarees
                 </button>
                 <button class="department-btn" data-department="Dupatta" title="Browse Kalamkari Dupattas">
-                    <span class="btn-traditional-dot"></span> Kalamkari Dupattas
+                    <span class="btn-traditional-dot"></span> Dupattas
                 </button>
                 <button id="wishlist-trigger" class="department-btn wishlist-dept-btn" title="View Saved Sarees">
-                    <span class="wishlist-icon" aria-hidden="true">♥</span> Gallery Vault (<span id="wishlist-count">0</span>)
+                    <span class="wishlist-icon" aria-hidden="true">♥</span> (<span id="wishlist-count">0</span>)
+                </button>
+                <button id="search-toggle-btn" class="department-btn search-toggle-btn" title="Search & Filter Saree Collection" aria-label="Open Search">
+                    <span class="search-btn-icon">🔍</span>
                 </button>
             </div>
         </section>
 
-        <!-- SEARCH & SORT BAR -->
-        <section class="search-sort-container" aria-label="Search and Sort">
+        <!-- EXPANDABLE SEARCH & SORT BAR -->
+        <section id="search-expandable-panel" class="search-expandable-panel" aria-label="Search and Sort">
             <div class="search-sort-wrapper">
                 <div class="search-input-group">
                     <span class="search-icon">🔍</span>
-                    <input type="text" id="search-input" placeholder="Search by Code (e.g. KS01), Fabric (Kanchipuram, Tussar)..." aria-label="Search Kalamkari Collection">
+                    <input type="text" id="search-input" placeholder="Search Code (e.g. KS01), Kanchipuram, Tussar..." aria-label="Search Kalamkari Collection">
                 </div>
                 <div class="sort-select-group">
-                    <label for="sort-select" class="sr-only">Sort Artworks By</label>
                     <select id="sort-select" aria-label="Sort Collection">
                         <option value="highest_price_first">Price: High to Low</option>
                         <option value="lowest_price_first">Price: Low to High</option>
                     </select>
                 </div>
+                <button id="search-close-btn" class="search-close-btn" aria-label="Close Search">&times;</button>
             </div>
         </section>
 
@@ -212,6 +215,21 @@
                         <div class="luxury-frame-overlay"></div>
                         <div class="detail-quick-actions">
                             <button id="detail-floating-wishlist-btn" class="card-action-btn detail-wishlist-btn" aria-label="Save Saree to Gallery Vault">♡</button>
+                            <button id="detail-floating-share-btn" class="card-action-btn detail-share-btn" title="Share Saree Artwork" aria-label="Share Saree">
+                                <svg class="share-icon-svg" viewBox="0 0 72 72">
+                                    <defs>
+                                        <linearGradient id="share3dGradFloating" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#EAC775" />
+                                            <stop offset="100%" stop-color="#B88E28" />
+                                        </linearGradient>
+                                    </defs>
+                                    <line x1="22" y1="36" x2="50" y2="20" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                                    <line x1="22" y1="36" x2="50" y2="52" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                                    <circle cx="50" cy="20" r="10" fill="url(#share3dGradFloating)" stroke="#3D0303" stroke-width="2.5" />
+                                    <circle cx="50" cy="52" r="10" fill="url(#share3dGradFloating)" stroke="#3D0303" stroke-width="2.5" />
+                                    <circle cx="22" cy="36" r="10" fill="url(#share3dGradFloating)" stroke="#3D0303" stroke-width="2.5" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -268,18 +286,51 @@
                                 <span>Book Live Video Call Inspection</span>
                             </button>
                         </div>
-                        <div class="secondary-actions-row">
+                        <div class="secondary-actions-row split-actions-row">
                             <button id="wishlist-btn" class="premium-btn">
                                 <span id="wishlist-btn-icon" class="btn-icon">❤️</span>
-                                <span id="wishlist-btn-text">Add to Gallery Vault</span>
+                                <span id="wishlist-btn-text">Add to Vault</span>
+                            </button>
+                            <button id="detail-share-btn" class="premium-btn share-btn">
+                                <span class="btn-icon">
+                                    <svg class="share-icon-svg btn-svg" viewBox="0 0 72 72">
+                                        <defs>
+                                            <linearGradient id="share3dGradBtn" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" stop-color="#EAC775" />
+                                                <stop offset="100%" stop-color="#B88E28" />
+                                            </linearGradient>
+                                        </defs>
+                                        <line x1="22" y1="36" x2="50" y2="20" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                                        <line x1="22" y1="36" x2="50" y2="52" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                                        <circle cx="50" cy="20" r="10" fill="url(#share3dGradBtn)" stroke="#3D0303" stroke-width="2.5" />
+                                        <circle cx="50" cy="52" r="10" fill="url(#share3dGradBtn)" stroke="#3D0303" stroke-width="2.5" />
+                                        <circle cx="22" cy="36" r="10" fill="url(#share3dGradBtn)" stroke="#3D0303" stroke-width="2.5" />
+                                    </svg>
+                                </span>
+                                <span>Share Saree</span>
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- STICKY BOTTOM BAR ON MOBILE FOR INSTANT PURCHASE -->
+            <!-- STICKY BOTTOM BAR ON MOBILE -->
             <div id="mobile-sticky-buy-bar" class="mobile-sticky-buy-bar">
+                <button id="mobile-sticky-share-btn" class="sticky-share-btn" title="Share Saree">
+                    <svg class="share-icon-svg" viewBox="0 0 72 72">
+                        <defs>
+                            <linearGradient id="share3dGradSticky" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#EAC775" />
+                                <stop offset="100%" stop-color="#B88E28" />
+                            </linearGradient>
+                        </defs>
+                        <line x1="22" y1="36" x2="50" y2="20" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                        <line x1="22" y1="36" x2="50" y2="52" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                        <circle cx="50" cy="20" r="10" fill="url(#share3dGradSticky)" stroke="#3D0303" stroke-width="2.5" />
+                        <circle cx="50" cy="52" r="10" fill="url(#share3dGradSticky)" stroke="#3D0303" stroke-width="2.5" />
+                        <circle cx="22" cy="36" r="10" fill="url(#share3dGradSticky)" stroke="#3D0303" stroke-width="2.5" />
+                    </svg>
+                </button>
                 <button id="mobile-sticky-video-btn" class="sticky-video-btn">📹 Video Call</button>
                 <button id="mobile-sticky-buy-btn" class="sticky-buy-btn">💬 Buy on WhatsApp</button>
             </div>

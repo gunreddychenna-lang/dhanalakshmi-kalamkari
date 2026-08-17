@@ -10,11 +10,11 @@ const USD_EXCHANGE_RATE = 86.5; // Approx USD per INR
 const CATALOG_API_URL = 'https://script.google.com/macros/s/AKfycbwxh2A4nVND1Bdv7FJBRRisONf3dC87cFtEynYjvwE03Agywoi4WtLk4ntlru3L4yKIXQ/exec';
 const ANALYTICS_API_URL = 'https://script.google.com/macros/s/AKfycbyN2Kzp3kxYP0uQjf6RU4yZ9KtL_WmV2gn3TVdj3a-e_EIEN5nWDvyrNOOiPfzBGAvc/exec'; 
 
-// Unified primary sales phone number across website & buttons
-const CONTACT_PHONE_NUMBER = '918688025096'; // +91 8688025096
+// Unified primary sales phone number across all buttons & views
+const CONTACT_PHONE_NUMBER = '918688025096';
 
-const CACHE_KEY = 'kalamkari_products_cache_v11_sales_boost';
-const CACHE_TIME_KEY = 'kalamkari_cache_timestamp_v11_sales_boost';
+const CACHE_KEY = 'kalamkari_products_cache_v15_3d_share_icon';
+const CACHE_TIME_KEY = 'kalamkari_cache_timestamp_v15_3d_share_icon';
 const CACHE_EXPIRY_MS = 3 * 60 * 1000; // 3 minutes
 
 const DEFAULT_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960"%3E%3Crect width="720" height="960" fill="%23F8EEDC"/%3E%3Ctext x="50%25" y="48%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="%234A0202"%3EImage+Not+Available%3C/text%3E%3C/svg%3E';
@@ -169,7 +169,6 @@ function sortProductsByPrice(products, strategy = currentSortStrategy) {
         if (strat === 'LOWEST_PRICE_FIRST' || strat === 'PRICE_LOW_TO_HIGH') {
             return priceA - priceB;
         } else {
-            // Defaults to Highest Price First
             return priceB - priceA;
         }
     });
@@ -214,16 +213,11 @@ function navigateToState(department, fabric, hash = '', push = true) {
 }
 
 function updateDepartmentUI() {
-    const activeDepartment = getDepartmentConfig();
     document.querySelectorAll('.collection-card, .department-btn').forEach(element => {
-        if (element.id === 'wishlist-trigger') return;
+        if (element.id === 'wishlist-trigger' || element.id === 'search-toggle-btn') return;
         const departmentKey = normalizeDepartment(element.dataset.department);
         element.classList.toggle('active', departmentKey === currentDepartment);
     });
-
-    if (elements.searchInput) {
-        elements.searchInput.placeholder = `Search ${activeDepartment.label.toLowerCase()} by code (e.g. KS01), fabric or design...`;
-    }
 }
 
 function setDepartment(department, { pushState = true } = {}) {
@@ -247,6 +241,9 @@ const elements = {
     spinner: document.getElementById('loading-spinner'),
     searchInput: document.getElementById('search-input'),
     sortSelect: document.getElementById('sort-select'),
+    searchToggleBtn: document.getElementById('search-toggle-btn'),
+    searchExpandablePanel: document.getElementById('search-expandable-panel'),
+    searchCloseBtn: document.getElementById('search-close-btn'),
     filtersContainer: document.getElementById('category-filters'),
     wishlistCount: document.getElementById('wishlist-count'),
     viewWishlistBtn: document.getElementById('wishlist-trigger'),
@@ -269,6 +266,9 @@ const elements = {
     addToWishlistBtn: document.getElementById('wishlist-btn'),
     wishlistBtnText: document.getElementById('wishlist-btn-text'),
     wishlistBtnIcon: document.getElementById('wishlist-btn-icon'),
+    detailShareBtn: document.getElementById('detail-share-btn'),
+    detailFloatingShareBtn: document.getElementById('detail-floating-share-btn'),
+    mobileStickyShareBtn: document.getElementById('mobile-sticky-share-btn'),
     videoCallBtn: document.getElementById('video-call-btn'),
     detailBuyBtn: document.getElementById('detail-buy-btn'),
     mobileStickyVideoBtn: document.getElementById('mobile-sticky-video-btn'),
@@ -576,7 +576,33 @@ function renderProducts(products, container, isHorizontal = false) {
             toggleWishlist(product);
         };
 
+        const cardShareBtn = document.createElement('button');
+        cardShareBtn.className = 'card-action-btn card-share-btn';
+        cardShareBtn.title = 'Share Saree Artwork';
+        cardShareBtn.innerHTML = `
+            <svg class="share-icon-svg" viewBox="0 0 72 72">
+                <defs>
+                    <linearGradient id="share3dGrad_${product.code}" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#EAC775" />
+                        <stop offset="100%" stop-color="#B88E28" />
+                    </linearGradient>
+                </defs>
+                <line x1="22" y1="36" x2="50" y2="20" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                <line x1="22" y1="36" x2="50" y2="52" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                <circle cx="50" cy="20" r="10" fill="url(#share3dGrad_${product.code})" stroke="#3D0303" stroke-width="2.5" />
+                <circle cx="50" cy="52" r="10" fill="url(#share3dGrad_${product.code})" stroke="#3D0303" stroke-width="2.5" />
+                <circle cx="22" cy="36" r="10" fill="url(#share3dGrad_${product.code})" stroke="#3D0303" stroke-width="2.5" />
+            </svg>
+        `;
+        
+        cardShareBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            shareProduct(product);
+        };
+
         quickActions.appendChild(cardWishlistBtn);
+        quickActions.appendChild(cardShareBtn);
         imageWrapper.appendChild(quickActions);
 
         const info = document.createElement('div');
@@ -1074,7 +1100,28 @@ function updateWishlistCount() {
     if (elements.wishlistCount) elements.wishlistCount.textContent = wishlist.length;
 }
 
-// 💬 HIGH CONVERTING WHATSAPP CLOSING MESSAGE
+// 🔗 3D SHARE FUNCTION
+function shareProduct(product = currentProduct) {
+    if (!product) return;
+    const productUrl = `https://www.dhanalakshmi-kalamkari.com/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
+    const shareData = {
+        title: `Dhanalakshmi Kalamkari — ${product.title}`,
+        text: `Explore this authentic hand-painted Srikalahasti Pen Kalamkari saree (${product.fabric}, Code: ${product.code}) direct from master artisans:`,
+        url: productUrl
+    };
+
+    if (navigator.share) {
+        navigator.share(shareData).catch(() => {});
+    } else {
+        navigator.clipboard.writeText(productUrl).then(() => {
+            showToast('Link copied to clipboard! 📋');
+        }).catch(() => {
+            prompt('Copy this Saree link:', productUrl);
+        });
+    }
+}
+
+// 💬 WHATSAPP ORDER
 function buyNow(product = currentProduct) {
     if (!product) return;
     const productUrl = `https://www.dhanalakshmi-kalamkari.com/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
@@ -1129,8 +1176,41 @@ function setupEventListeners() {
             showView('wishlist');
         });
     }
+
+    // 🔍 SEARCH TOGGLE EVENT HANDLERS
+    if (elements.searchToggleBtn) {
+        elements.searchToggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (elements.searchExpandablePanel) {
+                const isOpen = elements.searchExpandablePanel.classList.toggle('open');
+                elements.searchToggleBtn.classList.toggle('active', isOpen);
+                if (isOpen && elements.searchInput) {
+                    elements.searchInput.focus();
+                }
+            }
+        });
+    }
+
+    if (elements.searchCloseBtn) {
+        elements.searchCloseBtn.addEventListener('click', () => {
+            if (elements.searchExpandablePanel) {
+                elements.searchExpandablePanel.classList.remove('open');
+            }
+            if (elements.searchToggleBtn) {
+                elements.searchToggleBtn.classList.remove('active');
+            }
+            if (elements.searchInput) {
+                elements.searchInput.value = '';
+                filterAndSearchProducts();
+            }
+        });
+    }
     
     if (elements.addToWishlistBtn) elements.addToWishlistBtn.addEventListener('click', () => toggleWishlist(currentProduct));
+    if (elements.detailShareBtn) elements.detailShareBtn.addEventListener('click', () => shareProduct(currentProduct));
+    if (elements.detailFloatingShareBtn) elements.detailFloatingShareBtn.addEventListener('click', () => shareProduct(currentProduct));
+    if (elements.mobileStickyShareBtn) elements.mobileStickyShareBtn.addEventListener('click', () => shareProduct(currentProduct));
+
     if (elements.videoCallBtn) elements.videoCallBtn.addEventListener('click', () => bookVideoCall(currentProduct));
     if (elements.detailBuyBtn) elements.detailBuyBtn.addEventListener('click', () => buyNow(currentProduct));
 
@@ -1158,7 +1238,7 @@ function setupEventListeners() {
 
     document.querySelectorAll('.collection-card, .department-btn').forEach(element => {
         element.addEventListener('click', () => {
-            if (element.id === 'wishlist-trigger') return;
+            if (element.id === 'wishlist-trigger' || element.id === 'search-toggle-btn') return;
             setDepartment(element.dataset.department, { pushState: true }); 
             showView('catalogue');
         });
@@ -1223,11 +1303,11 @@ function updateWishlistButtonState() {
     
     if (isInWishlist) {
         elements.addToWishlistBtn.classList.add('active');
-        if (elements.wishlistBtnText) elements.wishlistBtnText.textContent = 'In Gallery Vault';
+        if (elements.wishlistBtnText) elements.wishlistBtnText.textContent = 'In Vault';
         if (elements.wishlistBtnIcon) elements.wishlistBtnIcon.textContent = '♥';
     } else {
         elements.addToWishlistBtn.classList.remove('active');
-        if (elements.wishlistBtnText) elements.wishlistBtnText.textContent = 'Add to Gallery Vault';
+        if (elements.wishlistBtnText) elements.wishlistBtnText.textContent = 'Add to Vault';
         if (elements.wishlistBtnIcon) elements.wishlistBtnIcon.textContent = '❤️';
     }
 

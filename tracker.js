@@ -4,7 +4,7 @@
  * =========================================================================
  */
 (function () {
-  const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzHXVDRflr9xhDxzEPhwcd_D_wGaCqTdegSIKhVirb8yHPPA1fkCZkayt2wSZUptos2hg/exec";
+  const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyKfSjWXuTmsRcGJ4gjN5pV3WMne1ELnBcPCKGIf733NPv08ac9FEePW9oIktUynpP9Jg/exec";
 
   function getVisitorInfo() {
     let visitorId = localStorage.getItem("crm_visitor_id") || localStorage.getItem("kalamkari_crm_vid");

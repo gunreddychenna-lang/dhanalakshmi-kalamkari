@@ -10,9 +10,9 @@ const GLOBAL_DISCOUNT_PERCENTAGE = 10;
 const IMAGEKIT_ENDPOINT = 'https://ik.imagekit.io/phuzcbamt';
 
 // GOOGLE APPS SCRIPT WEB APP JSON API (Primary) & CSV URL (Backup Fallback)
-const CATALOG_API_URL = 'https://script.google.com/macros/s/AKfycbzAXbuROmepx2ZwMM3vyj3wOivE5EOVlbsn59KAosQZPn3qoB0mFIgVWu-TeuJht3j1ng/exec';
-const PRIMARY_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQVgsqxAaO2_LUzSAxUz_2P_WhdreXSnASw7x30UJFRiCHX4i6WR0yIkhtDuF0wrNTDydZfLPZHRfhx/pub?gid=100332201&single=true&output=csv';
-const BACKUP_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQVgsqxAaO2_LUzSAxUz_2P_WhdreXSnASw7x30UJFRiCHX4i6WR0yIkhtDuF0wrNTDydZfLPZHRfhx/pub?output=csv';
+const CATALOG_API_URL = 'https://script.google.com/macros/s/AKfycbwxh2A4nVND1Bdv7FJBRRisONf3dC87cFtEynYjvwE03Agywoi4WtLk4ntlru3L4yKIXQ/exec';
+const PRIMARY_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTroLsc0ivOzh-ghE-b4vSnkdzmAXcvq-CvSekKp9wmkt5ZYD2jwDnhjKlVZn9rPPKsqEQhTXLw8b1s/pub?output=csv';
+const BACKUP_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTroLsc0ivOzh-ghE-b4vSnkdzmAXcvq-CvSekKp9wmkt5ZYD2jwDnhjKlVZn9rPPKsqEQhTXLw8b1s/pub?output=csv';
 
 const CONTACT_PHONE_NUMBER = '918688025096';
 const DEFAULT_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960"%3E%3Crect width="720" height="960" fill="%23F5EFE6"/%3E%3Ctext x="50%25" y="48%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="%23A67D5A"%3EImage+Not+Available%3C/text%3E%3C/svg%3E';
@@ -20,8 +20,8 @@ const DEFAULT_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/s
 const SHARE_ICON_SVG = '<svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>';
 
 const DEPARTMENTS = [
-    { key: 'saree', label: 'Kalamkari Sarees', singular: 'Kalamkari Saree' },
-    { key: 'dupatta', label: 'Kalamkari Dupattas', singular: 'Kalamkari Dupatta' }
+    { key: 'saree', label: 'Sarees', singular: 'Saree' },
+    { key: 'dupatta', label: 'Dupattas', singular: 'Dupatta' }
 ];
 
 let allProducts = [];

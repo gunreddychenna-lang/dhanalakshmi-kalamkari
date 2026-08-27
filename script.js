@@ -92,7 +92,7 @@ function extractDriveFileId(str) {
     return match && match[1] ? match[1] : null;
 }
 
-// 2. ULTRA-FAST IMAGE GENERATOR
+// 2. ULTRA-FAST IMAGE GENERATOR (Primary: Google High-Speed Global CDN)
 function getProductImageUrl(product, width = 800) {
     if (!product) return DEFAULT_IMAGE;
     
@@ -104,17 +104,12 @@ function getProductImageUrl(product, width = 800) {
                    extractDriveFileId(product.thumbnail);
 
     if (fileId) {
-        if (IMAGEKIT_ENDPOINT) {
-            return `${IMAGEKIT_ENDPOINT}/tr:w-${width},f-auto,q-80/uc?export=view&id=${fileId}`;
-        }
+        // Fast direct Google CDN endpoint (avoids Drive rate-limiting and timeouts)
         return `https://lh3.googleusercontent.com/d/${fileId}=w${width}`;
     }
     
     const rawUrl = (product.imageLink || product['Drive Link'] || product.thumbnail || '').trim();
     if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-        if (IMAGEKIT_ENDPOINT) {
-            return `${IMAGEKIT_ENDPOINT}/tr:w-${width},f-auto,q-80/${rawUrl}`;
-        }
         return rawUrl;
     }
 
@@ -134,9 +129,11 @@ function setupImageFallback(imgElement, product, width = 800) {
     imgElement.onerror = () => {
         if (!imgElement.dataset.fallbackAttempted) {
             imgElement.dataset.fallbackAttempted = "1";
-            imgElement.src = `https://lh3.googleusercontent.com/d/${fileId}=w${width}`;
+            // Tier 1 fallback: Google Drive thumbnail service
+            imgElement.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w${width}`;
         } else if (imgElement.dataset.fallbackAttempted === "1") {
             imgElement.dataset.fallbackAttempted = "2";
+            // Tier 2 fallback: Direct Drive UC link
             imgElement.src = `https://drive.google.com/uc?export=view&id=${fileId}`;
         } else {
             imgElement.src = DEFAULT_IMAGE;

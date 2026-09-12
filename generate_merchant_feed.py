@@ -7,7 +7,7 @@ from xml.dom import minidom
 
 # Configuration
 API_URL = 'https://script.google.com/macros/s/AKfycbzAXbuROmepx2ZwMM3vyj3wOivE5EOVlbsn59KAosQZPn3qoB0mFIgVWu-TeuJht3j1ng/exec'
-DOMAIN_URL = 'https://www.dhanalakshmikalamkari.in'
+DOMAIN_URL = 'https://www.dhanalakshmikalamkari.in/'
 BRAND_NAME = 'Dhanalakshmi Kalamkari'
 CATEGORY = 'Apparel & Accessories > Clothing > Traditional & Ceremonial Clothing > Sarees'
 

@@ -1,12 +1,12 @@
 // =========================================================================
-// DHANALAKSHMI KALAMKARI E-COMMERCE ENGINE
+// DHANALAKSHMI KALAMKARI E-COMMERCE & SEO ENGINE
 // =========================================================================
 const SORT_STRATEGY = 'PRICE_HIGH_TO_LOW'; 
 const TARGET_MIDDLE_PRICE = 26500;
 const FEATURED_FABRIC_FIRST = 'Kanchipuram';
 const GLOBAL_DISCOUNT_PERCENTAGE = 10; 
 
-// YOUR IMAGEKIT PRODUCTION CDN ENDPOINT
+// YOUR IMAGEKIT PRODUCTION CDN ENDPOINT (OPTIONAL)
 const IMAGEKIT_ENDPOINT = 'https://ik.imagekit.io/phuzcbamt';
 
 // GOOGLE APPS SCRIPT WEB APP JSON API (Primary) & CSV URL (Backup Fallback)
@@ -15,7 +15,11 @@ const PRIMARY_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQVgsqx
 const BACKUP_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQVgsqxAaO2_LUzSAxUz_2P_WhdreXSnASw7x30UJFRiCHX4i6WR0yIkhtDuF0wrNTDydZfLPZHRfhx/pub?output=csv';
 
 const CONTACT_PHONE_NUMBER = '+918688025096';
-const DOMAIN_URL = 'https://www.dhanalakshmikalamkari.in';
+// Dynamically uses current live domain (works on .in, .com, Vercel, or custom domains)
+const DOMAIN_URL = window.location.origin && window.location.origin !== 'null' 
+    ? window.location.origin 
+    : 'https://www.dhanalakshmikalamkari.in';
+
 const DEFAULT_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960"%3E%3Crect width="720" height="960" fill="%23F5EFE6"/%3E%3Ctext x="50%25" y="48%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="%23A67D5A"%3EImage+Not+Available%3C/text%3E%3C/svg%3E';
 
 const SHARE_ICON_SVG = `<svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>`;
@@ -105,7 +109,6 @@ function getProductImageUrl(product, width = 800) {
                    extractDriveFileId(product.thumbnail);
 
     if (fileId) {
-        // Fast direct Google CDN endpoint (avoids Drive rate-limiting and timeouts)
         return `https://lh3.googleusercontent.com/d/${fileId}=w${width}`;
     }
     
@@ -130,11 +133,9 @@ function setupImageFallback(imgElement, product, width = 800) {
     imgElement.onerror = () => {
         if (!imgElement.dataset.fallbackAttempted) {
             imgElement.dataset.fallbackAttempted = "1";
-            // Tier 1 fallback: Google Drive thumbnail service
             imgElement.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w${width}`;
         } else if (imgElement.dataset.fallbackAttempted === "1") {
             imgElement.dataset.fallbackAttempted = "2";
-            // Tier 2 fallback: Direct Drive UC link
             imgElement.src = `https://drive.google.com/uc?export=view&id=${fileId}`;
         } else {
             imgElement.src = DEFAULT_IMAGE;
@@ -142,17 +143,27 @@ function setupImageFallback(imgElement, product, width = 800) {
     };
 }
 
+// 4. GENERATE CLEAN CRAWLABLE PRODUCT PAGE URL (GOOGLE SEARCH INDEXABLE)
+function getProductPageUrl(product) {
+    if (!product || !product.code) return DOMAIN_URL;
+    return `${DOMAIN_URL}/?product=${encodeURIComponent(product.code)}`;
+}
+
+// 5. UPDATE SEO META TAGS, DYNAMIC CANONICAL, & JSON-LD SCHEMA
 function updateGoogleImageSchemaAndMeta(product) {
     if (!product) return;
-    const pageTitle = `${product.title} (Code: ${product.code}) — Srikalahasti Pen Kalamkari | Dhanalakshmi Kalamkari`;
-    const pageDesc = `Buy authentic hand-painted ${product.fabric} Kalamkari artwork (${product.title}) with natural organic mineral dyes. Code: ${product.code}. Offer Price: ₹${new Intl.NumberFormat('en-IN').format(product.price)}. Direct from Dhanalakshmi Kalamkari master artisans in Srikalahasti.`;
+    const pageTitle = `${product.title} (Code: ${product.code}) — Hand-Painted Srikalahasti Pen Kalamkari | Dhanalakshmi Kalamkari`;
+    const pageDesc = `Buy authentic hand-painted ${product.fabric} Kalamkari artwork (${product.title}) with 100% natural organic mineral dyes. Code: ${product.code}. Offer Price: ₹${new Intl.NumberFormat('en-IN').format(product.price)}. Direct from Dhanalakshmi Kalamkari master artisans in Srikalahasti.`;
     const imageUrl = getProductImageUrl(product, 2000);
-    const productUrl = `${DOMAIN_URL}/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
+    const productUrl = getProductPageUrl(product);
 
     document.title = pageTitle;
     
     let metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.setAttribute('content', pageDesc);
+
+    let canonicalEl = document.querySelector('link[rel="canonical"]');
+    if (canonicalEl) canonicalEl.setAttribute('href', productUrl);
 
     const ogTitle = document.getElementById('og-title');
     if (ogTitle) ogTitle.setAttribute('content', pageTitle);
@@ -180,17 +191,49 @@ function updateGoogleImageSchemaAndMeta(product) {
             "description": product.description || pageDesc,
             "sku": product.code,
             "mpn": product.code,
-            "brand": { "@type": "Brand", "name": "Dhanalakshmi Kalamkari" },
+            "brand": { 
+                "@type": "Brand", 
+                "name": "Dhanalakshmi Kalamkari" 
+            },
             "offers": {
                 "@type": "Offer",
                 "url": productUrl,
                 "priceCurrency": "INR",
                 "price": product.price,
-                "availability": product.qty > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+                "itemCondition": "https://schema.org/NewCondition",
+                "availability": product.qty > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+                "seller": {
+                    "@type": "Organization",
+                    "name": "Dhanalakshmi Kalamkari Srikalahasti"
+                }
             }
         };
         schemaScript.textContent = JSON.stringify(schemaData);
     }
+}
+
+function resetCatalogueSeoMeta() {
+    document.title = "Dhanalakshmi Kalamkari — Hand-Painted Srikalahasti Pen Kalamkari Silk Sarees Since 1984";
+    
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+        metaDesc.setAttribute('content', 'Buy 100% authentic hand-painted Srikalahasti Pen Kalamkari pure silk sarees, dupattas & fabrics directly from Dhanalakshmi Kalamkari master artisans since 1984. Worldwide shipping & live video call shopping.');
+    }
+
+    let canonicalEl = document.querySelector('link[rel="canonical"]');
+    if (canonicalEl) canonicalEl.setAttribute('href', DOMAIN_URL + '/');
+
+    const ogTitle = document.getElementById('og-title');
+    if (ogTitle) ogTitle.setAttribute('content', "Dhanalakshmi Kalamkari — Hand-Painted Srikalahasti Pen Kalamkari Silk Sarees");
+    const ogDesc = document.getElementById('og-desc');
+    if (ogDesc) ogDesc.setAttribute('content', "Buy 100% authentic hand-painted Srikalahasti Pen Kalamkari pure silk sarees directly from Dhanalakshmi Kalamkari master artisans since 1984. Live video call booking available.");
+    const ogImage = document.getElementById('og-image');
+    if (ogImage) ogImage.setAttribute('content', `${DOMAIN_URL}/Banner.png`);
+    const ogUrl = document.getElementById('og-url');
+    if (ogUrl) ogUrl.setAttribute('content', DOMAIN_URL + '/');
+
+    const schemaScript = document.getElementById('dynamic-product-schema');
+    if (schemaScript) schemaScript.textContent = '';
 }
 
 function sortProductsByPrice(products) {
@@ -241,8 +284,15 @@ function inferDepartmentFromText(...values) {
     return normalizeDepartment(combined);
 }
 
-function navigateToState(department, fabric, hash = '', push = true) {
+function navigateToState(department, fabric, productCode = null, hash = '', push = true) {
     const url = new URL(window.location.href);
+    
+    if (productCode) {
+        url.searchParams.set('product', productCode);
+    } else {
+        url.searchParams.delete('product');
+    }
+
     if (department) url.searchParams.set('department', department);
     else url.searchParams.delete('department');
     
@@ -250,8 +300,12 @@ function navigateToState(department, fabric, hash = '', push = true) {
     else url.searchParams.delete('fabric');
     
     url.hash = hash;
-    if (push) window.history.pushState({ department, fabric, hash }, '', url);
-    else window.history.replaceState({ department, fabric, hash }, '', url);
+
+    if (push) {
+        window.history.pushState({ department, fabric, productCode, hash }, '', url);
+    } else {
+        window.history.replaceState({ department, fabric, productCode, hash }, '', url);
+    }
 }
 
 function updateDepartmentUI() {
@@ -272,7 +326,7 @@ function setDepartment(department, { pushState = true } = {}) {
     if (elements.searchInput) elements.searchInput.value = '';
     updateDepartmentUI();
     renderFilterButtons();
-    if (pushState) navigateToState(currentDepartment, 'all', '', true);
+    if (pushState) navigateToState(currentDepartment, 'all', null, '', true);
     filterAndSearchProducts();
 }
 
@@ -284,7 +338,6 @@ function hideIntroAnimation() {
     }
 }
 
-// ACCURATE SCROLL RESET TO FIRST ROW
 function scrollToDepartment(smooth = true) {
     if (isInitialLoad) return;
     const container = document.querySelector('.container') || document.querySelector('#product-grid');
@@ -304,7 +357,7 @@ function goBack() {
         const params = new URLSearchParams(window.location.search);
         const initialDept = normalizeDepartment(params.get('department')) || currentDepartment;
         const initialFabric = params.get('fabric') || 'all';
-        navigateToState(initialDept, initialFabric, '', false);
+        navigateToState(initialDept, initialFabric, null, '', false);
         handlePopState();
     }
 }
@@ -495,18 +548,11 @@ function renderProducts(products, container, isHorizontal = false) {
         card.dataset.code = product.code;
         if (product.qty <= 0) card.classList.add('sold-out');
 
-        const keywordSlug = `#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
-
+        // GOOGLE INDEXABLE QUERY URL ROUTING
         card.onclick = () => {
-            if (isHorizontal) {
-                const url = new URL(window.location.href);
-                url.hash = keywordSlug;
-                window.history.replaceState({ isDepartmentSelection: true }, '', url);
-                handlePopState();
-            } else {
-                sessionPushedStates++;
-                window.location.hash = keywordSlug;
-            }
+            sessionPushedStates++;
+            navigateToState(product.departmentKey || currentDepartment, null, product.code, '', !isHorizontal);
+            showProductDetails(product);
         };
 
         const formattedPrice = new Intl.NumberFormat('en-IN').format(product.price);
@@ -753,7 +799,7 @@ function renderQuickCategoryPills(currentProd = currentProduct) {
         const viewAllBtn = blockTitle.querySelector('.view-all-fabric-btn');
         viewAllBtn.onclick = () => {
             setDepartment(targetDept, { pushState: false });
-            navigateToState(targetDept, item.key, '', true);
+            navigateToState(targetDept, item.key, null, '', true);
             syncFabricFilterUI(item.key);
             showView('catalogue');
             scrollToDepartment(true);
@@ -781,8 +827,8 @@ function showView(viewName) {
     } else {
         document.body.classList.remove('details-mode');
         if (viewName === 'catalogue') {
+            resetCatalogueSeoMeta();
             scrollToDepartment(true);
-            document.title = "Dhanalakshmi Kalamkari — Hand-Painted Srikalahasti Pen Kalamkari Silk Sarees";
         } else if (viewName === 'policy') {
             document.title = "Return & Authenticity Policy — Dhanalakshmi Kalamkari Srikalahasti";
             window.scrollTo(0, 0);
@@ -838,7 +884,7 @@ function renderFilterButtons() {
         btn.addEventListener('click', () => {
             elements.filtersContainer.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            navigateToState(currentDepartment, btn.dataset.filter, '', true);
+            navigateToState(currentDepartment, btn.dataset.filter, null, '', true);
             filterAndSearchProducts();
             showView('catalogue');
             scrollToDepartment(true);
@@ -1008,7 +1054,7 @@ function updateWishlistCount() {
 function buyNow(product = currentProduct) {
     if (!product) return;
     const visitorId = localStorage.getItem('crm_visitor_id') || localStorage.getItem('kalamkari_crm_vid') || 'New';
-    const productUrl = `${DOMAIN_URL}/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
+    const productUrl = getProductPageUrl(product);
     const text = `Namaste Dhanalakshmi Kalamkari Workshop,\n\nI want to BUY this hand-painted Kalamkari masterpiece:\n\n• Code: ${product.code}\n• Title: ${product.title}\n• Fabric: ${product.fabric}\n• Offer Price: INR ${new Intl.NumberFormat('en-IN').format(product.price)}\n• Web Link: ${productUrl}\n\n• Ref ID: ${visitorId}\n\nPlease share payment details and shipping process.`;
     
     window.open(`https://wa.me/${CONTACT_PHONE_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
@@ -1017,7 +1063,7 @@ function buyNow(product = currentProduct) {
 function bookVideoCall(product = currentProduct) {
     if (!product) return;
     const visitorId = localStorage.getItem('crm_visitor_id') || localStorage.getItem('kalamkari_crm_vid') || 'New';
-    const productUrl = `${DOMAIN_URL}/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
+    const productUrl = getProductPageUrl(product);
     const text = `Namaste Dhanalakshmi Kalamkari Workshop,\n\nI would like to BOOK A LIVE VIDEO CALL to inspect this hand-painted Kalamkari saree artwork:\n\n• Code: ${product.code}\n• Title: ${product.title}\n• Fabric: ${product.fabric}\n• Offer Price: INR ${new Intl.NumberFormat('en-IN').format(product.price)}\n• Web Link: ${productUrl}\n\n• Ref ID: ${visitorId}\n\nPlease let me know your available time slots.`;
     
     window.open(`https://wa.me/${CONTACT_PHONE_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
@@ -1025,7 +1071,7 @@ function bookVideoCall(product = currentProduct) {
 
 function shareProduct(product = currentProduct) {
     if (!product) return;
-    const shareUrl = `${DOMAIN_URL}/#dhanalakshmi-kalamkari-srikalahasthi-pen-kalamkari-${product.code}`;
+    const shareUrl = getProductPageUrl(product);
     const shareText = `Explore this authentic hand-painted Dhanalakshmi Kalamkari artwork: "${product.title}" (Code: ${product.code})`;
     
     pendingShareData = { title: product.title, text: shareText, url: shareUrl };
@@ -1148,30 +1194,42 @@ function setupEventListeners() {
 }
 
 function handlePopState() {
-    const hash = window.location.hash;
     const params = new URLSearchParams(window.location.search);
+    const productParam = params.get('product');
     const departmentParam = normalizeDepartment(params.get('department')) || 'saree';
     const fabricParam = params.get('fabric') || 'all';
+    const hash = window.location.hash;
 
     currentDepartment = departmentParam;
     updateDepartmentUI();
 
     if (hash === '#return-policy' || hash === '#policy') {
         showView('policy');
-    } else if (hash.includes('kalamkari') || hash.startsWith('#product/')) {
-        const codeMatch = hash.match(/(?:[A-Za-z0-9_-]+-)?([A-Za-z0-9]+)$/);
-        const productCode = codeMatch ? codeMatch[1] : hash.split('/').pop();
-        const product = allProducts.find(p => p.code === productCode);
-        if (product) showProductDetails(product);
-        else showView('catalogue');
+        return;
     } else if (hash === '#wishlist') {
         renderWishlist();
         showView('wishlist');
-    } else {
-        renderFilterButtons();
-        syncFabricFilterUI(fabricParam);
-        showView('catalogue'); 
+        return;
     }
+
+    // Check query parameter (?product=KS001) or legacy hash (#kalamkari-KS001)
+    let productCode = productParam;
+    if (!productCode && (hash.includes('kalamkari') || hash.startsWith('#product/'))) {
+        const codeMatch = hash.match(/(?:[A-Za-z0-9_-]+-)?([A-Za-z0-9]+)$/);
+        productCode = codeMatch ? codeMatch[1] : hash.split('/').pop();
+    }
+
+    if (productCode) {
+        const product = allProducts.find(p => String(p.code).toLowerCase() === String(productCode).toLowerCase());
+        if (product) {
+            showProductDetails(product);
+            return;
+        }
+    }
+
+    renderFilterButtons();
+    syncFabricFilterUI(fabricParam);
+    showView('catalogue'); 
 }
 
 function updateWishlistButtonState() {
@@ -1193,9 +1251,10 @@ async function init() {
     const params = new URLSearchParams(window.location.search);
     const initialDept = normalizeDepartment(params.get('department')) || currentDepartment;
     const initialFabric = params.get('fabric') || 'all';
+    const productParam = params.get('product');
     const hash = window.location.hash;
 
-    navigateToState(initialDept, initialFabric, hash, false);
+    navigateToState(initialDept, initialFabric, productParam, hash, false);
     handlePopState(); 
     isInitialLoad = false;
     hideIntroAnimation();

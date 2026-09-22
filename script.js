@@ -15,7 +15,7 @@ const PRIMARY_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQVgsqx
 const BACKUP_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQVgsqxAaO2_LUzSAxUz_2P_WhdreXSnASw7x30UJFRiCHX4i6WR0yIkhtDuF0wrNTDydZfLPZHRfhx/pub?output=csv';
 
 const CONTACT_PHONE_NUMBER = '+918688025096';
-// Dynamically uses current live domain (works on .in, .com, Vercel, or custom domains)
+// Dynamically uses current live domain
 const DOMAIN_URL = window.location.origin && window.location.origin !== 'null' 
     ? window.location.origin 
     : 'https://www.dhanalakshmikalamkari.in';
@@ -75,7 +75,8 @@ const elements = {
     wishlistBtnIcon: document.getElementById('wishlist-btn-icon'),
     shareBtn: document.getElementById('share-btn'),
     videoCallBtn: document.getElementById('video-call-btn'),
-    detailBuyNowBtn: document.getElementById('detail-buy-now-btn')
+    detailBuyNowBtn: document.getElementById('detail-buy-now-btn'),
+    mobileStickyBar: document.getElementById('mobile-sticky-bar')
 };
 
 function showToast(message) {
@@ -143,7 +144,7 @@ function setupImageFallback(imgElement, product, width = 800) {
     };
 }
 
-// 4. GENERATE CLEAN CRAWLABLE PRODUCT PAGE URL (GOOGLE SEARCH INDEXABLE)
+// 4. GENERATE CLEAN CRAWLABLE PRODUCT PAGE URL
 function getProductPageUrl(product) {
     if (!product || !product.code) return DOMAIN_URL;
     return `${DOMAIN_URL}/?product=${encodeURIComponent(product.code)}`;
@@ -153,7 +154,7 @@ function getProductPageUrl(product) {
 function updateGoogleImageSchemaAndMeta(product) {
     if (!product) return;
     const pageTitle = `${product.title} (Code: ${product.code}) — Hand-Painted Srikalahasti Pen Kalamkari | Dhanalakshmi Kalamkari`;
-    const pageDesc = `Buy authentic hand-painted ${product.fabric} Kalamkari artwork (${product.title}) with 100% natural organic mineral dyes. Code: ${product.code}. Offer Price: ₹${new Intl.NumberFormat('en-IN').format(product.price)}. Direct from Dhanalakshmi Kalamkari master artisans in Srikalahasti.`;
+    const pageDesc = `Buy authentic hand-painted ${product.fabric} Kalamkari saree (${product.title}) with 100% natural organic vegetable dyes. Code: ${product.code}. Offer Price: ₹${new Intl.NumberFormat('en-IN').format(product.price)}. Direct from Dhanalakshmi Kalamkari workshop in Srikalahasti.`;
     const imageUrl = getProductImageUrl(product, 2000);
     const productUrl = getProductPageUrl(product);
 
@@ -203,8 +204,9 @@ function updateGoogleImageSchemaAndMeta(product) {
                 "itemCondition": "https://schema.org/NewCondition",
                 "availability": product.qty > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
                 "seller": {
-                    "@type": "Organization",
-                    "name": "Dhanalakshmi Kalamkari Srikalahasti"
+                    "@type": "ClothingStore",
+                    "name": "Dhanalakshmi Kalamkari Srikalahasti",
+                    "telephone": "+918688025096"
                 }
             }
         };
@@ -217,7 +219,7 @@ function resetCatalogueSeoMeta() {
     
     let metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) {
-        metaDesc.setAttribute('content', 'Buy 100% authentic hand-painted Srikalahasti Pen Kalamkari pure silk sarees, dupattas & fabrics directly from Dhanalakshmi Kalamkari master artisans since 1984. Worldwide shipping & live video call shopping.');
+        metaDesc.setAttribute('content', 'Buy 100% authentic hand-painted Srikalahasti Pen Kalamkari pure silk sarees, dupattas & fabrics directly from Dhanalakshmi Kalamkari master workshop since 1984. Worldwide shipping & live video call shopping.');
     }
 
     let canonicalEl = document.querySelector('link[rel="canonical"]');
@@ -226,7 +228,7 @@ function resetCatalogueSeoMeta() {
     const ogTitle = document.getElementById('og-title');
     if (ogTitle) ogTitle.setAttribute('content', "Dhanalakshmi Kalamkari — Hand-Painted Srikalahasti Pen Kalamkari Silk Sarees");
     const ogDesc = document.getElementById('og-desc');
-    if (ogDesc) ogDesc.setAttribute('content', "Buy 100% authentic hand-painted Srikalahasti Pen Kalamkari pure silk sarees directly from Dhanalakshmi Kalamkari master artisans since 1984. Live video call booking available.");
+    if (ogDesc) ogDesc.setAttribute('content', "Buy 100% authentic hand-painted Srikalahasti Pen Kalamkari pure silk sarees directly from Dhanalakshmi Kalamkari workshop since 1984. Live video call booking available.");
     const ogImage = document.getElementById('og-image');
     if (ogImage) ogImage.setAttribute('content', `${DOMAIN_URL}/Banner.png`);
     const ogUrl = document.getElementById('og-url');
@@ -548,7 +550,6 @@ function renderProducts(products, container, isHorizontal = false) {
         card.dataset.code = product.code;
         if (product.qty <= 0) card.classList.add('sold-out');
 
-        // GOOGLE INDEXABLE QUERY URL ROUTING
         card.onclick = () => {
             sessionPushedStates++;
             navigateToState(product.departmentKey || currentDepartment, null, product.code, '', !isHorizontal);
@@ -824,13 +825,15 @@ function showView(viewName) {
     
     if (viewName === 'details') {
         document.body.classList.add('details-mode');
+        if (elements.mobileStickyBar) elements.mobileStickyBar.classList.add('visible');
     } else {
         document.body.classList.remove('details-mode');
+        if (elements.mobileStickyBar) elements.mobileStickyBar.classList.remove('visible');
         if (viewName === 'catalogue') {
             resetCatalogueSeoMeta();
             scrollToDepartment(true);
         } else if (viewName === 'policy') {
-            document.title = "Return & Authenticity Policy — Dhanalakshmi Kalamkari Srikalahasti";
+            document.title = "Workshop Authenticity & Shipping Policy — Dhanalakshmi Kalamkari";
             window.scrollTo(0, 0);
         } else {
             window.scrollTo(0, 0);
@@ -1113,6 +1116,16 @@ function setupEventListeners() {
     if (elements.shareBtn) elements.shareBtn.addEventListener('click', () => shareProduct(currentProduct));
     if (elements.videoCallBtn) elements.videoCallBtn.addEventListener('click', () => bookVideoCall(currentProduct));
     if (elements.detailBuyNowBtn) elements.detailBuyNowBtn.addEventListener('click', () => buyNow(currentProduct));
+
+    // Mobile sticky action buttons
+    const mobileStickyShareBtn = document.getElementById('mobile-sticky-share-btn');
+    if (mobileStickyShareBtn) mobileStickyShareBtn.addEventListener('click', () => shareProduct(currentProduct));
+
+    const mobileStickyVideoBtn = document.getElementById('mobile-sticky-video-btn');
+    if (mobileStickyVideoBtn) mobileStickyVideoBtn.addEventListener('click', () => bookVideoCall(currentProduct));
+
+    const mobileStickyBuyBtn = document.getElementById('mobile-sticky-buy-btn');
+    if (mobileStickyBuyBtn) mobileStickyBuyBtn.addEventListener('click', () => buyNow(currentProduct));
 
     if (elements.searchInput) {
         elements.searchInput.addEventListener('input', () => {

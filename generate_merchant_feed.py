@@ -7,7 +7,7 @@ from xml.dom import minidom
 
 # Configuration
 API_URL = 'https://script.google.com/macros/s/AKfycbzAXbuROmepx2ZwMM3vyj3wOivE5EOVlbsn59KAosQZPn3qoB0mFIgVWu-TeuJht3j1ng/exec'
-DOMAIN_URL = 'https://www.dhanalakshmikalamkari.in/'
+DOMAIN_URL = 'https://www.dhanalakshmikalamkari.in'
 BRAND_NAME = 'Dhanalakshmi Kalamkari'
 CATEGORY = 'Apparel & Accessories > Clothing > Traditional & Ceremonial Clothing > Sarees'
 
@@ -42,12 +42,19 @@ def parse_price(val):
     except:
         return 14500
 
+def create_slug(title, code):
+    clean_title = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    clean_code = str(code).lower()
+    if 'srikalahasti' not in clean_title:
+        clean_title = f'srikalahasti-{clean_title}'
+    if not clean_title.endswith(clean_code):
+        clean_title = f'{clean_title}-{clean_code}'
+    return re.sub(r'-+', '-', clean_title)
+
 print("Fetching latest products from Google Sheets...")
 req = Request(API_URL, headers={'User-Agent': 'Mozilla/5.0'})
 with urlopen(req, timeout=30) as resp:
     raw_data = json.loads(resp.read().decode('utf-8'))
-
-print(f"Total raw items fetched: {len(raw_data)}")
 
 products = []
 for item in raw_data:
@@ -66,14 +73,15 @@ for item in raw_data:
     
     availability = 'in_stock' if qty > 0 else 'out_of_stock'
     image_url = get_image_url(item)
-    product_link = f"{DOMAIN_URL}/?product={code}"
     
-    # SEO Keyword Rich Title & Description
     title = f"Hand-Painted Srikalahasti Pen Kalamkari {fabric} Saree ({code})"
+    slug = create_slug(title, code)
+    product_link = f"{DOMAIN_URL}/?product={slug}"
+    
     description = (
         f"Authentic 100% hand-painted Srikalahasti Pen Kalamkari pure silk saree (Code: {code}). "
         f"Handcrafted with bamboo pens and natural organic vegetable mineral dyes in Srikalahasti, Andhra Pradesh. "
-        f"Fabric: {fabric}. Direct from Dhanalakshmi Kalamkari master artisans."
+        f"Fabric: {fabric}. Direct from Dhanalakshmi Kalamkari master workshop."
     )
 
     products.append({
@@ -89,22 +97,17 @@ for item in raw_data:
         'google_product_category': CATEGORY
     })
 
-print(f"Processed {len(products)} valid products.")
-
-# 1. EXPORT TO GOOGLE MERCHANT CSV
+# Export CSV
 csv_filename = 'google_merchant_products.csv'
 fieldnames = ['id', 'title', 'description', 'link', 'image_link', 'availability', 'price', 'brand', 'condition', 'google_product_category']
 with open(csv_filename, 'w', newline='', encoding='utf-8') as f:
     writer = csv.DictWriter(f, fieldnames=fieldnames)
     writer.writeheader()
     writer.writerows(products)
-print(f"✅ Created '{csv_filename}' (for direct file upload in Merchant Center)")
+print(f"✅ Created '{csv_filename}' with keyword-rich product links.")
 
-# 2. EXPORT TO GOOGLE MERCHANT RSS 2.0 XML (For Automatic Scheduled Sync)
-rss = ET.Element('rss', {
-    'version': '2.0',
-    'xmlns:g': 'http://base.google.com/ns/1.0'
-})
+# Export XML
+rss = ET.Element('rss', {'version': '2.0', 'xmlns:g': 'http://base.google.com/ns/1.0'})
 channel = ET.SubElement(rss, 'channel')
 ET.SubElement(channel, 'title').text = 'Dhanalakshmi Kalamkari Srikalahasti'
 ET.SubElement(channel, 'link').text = DOMAIN_URL
@@ -124,7 +127,6 @@ for p in products:
     ET.SubElement(item, 'g:google_product_category').text = p['google_product_category']
 
 xml_str = minidom.parseString(ET.tostring(rss, encoding='utf-8')).toprettyxml(indent="  ")
-xml_filename = 'products.xml'
-with open(xml_filename, 'w', encoding='utf-8') as f:
+with open('products.xml', 'w', encoding='utf-8') as f:
     f.write(xml_str)
-print(f"✅ Created '{xml_filename}' (for automatic scheduled fetch)")
+print(f"✅ Created 'products.xml' with keyword-rich product links.")

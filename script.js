@@ -144,13 +144,54 @@ function setupImageFallback(imgElement, product, width = 800) {
     };
 }
 
-// 4. GENERATE CLEAN CRAWLABLE PRODUCT PAGE URL
-function getProductPageUrl(product) {
-    if (!product || !product.code) return DOMAIN_URL;
-    return `${DOMAIN_URL}/?product=${encodeURIComponent(product.code)}`;
+// 4. GENERATE HIGH-KEYWORD SEO SLUG FOR PRODUCT
+function getProductSlug(product) {
+    if (!product || !product.code) return '';
+    const cleanTitle = (product.title || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    const cleanCode = String(product.code).toLowerCase();
+    
+    let base = cleanTitle;
+    if (!base.includes('srikalahasti')) {
+        base = 'srikalahasti-' + base;
+    }
+    if (!base.endsWith(cleanCode)) {
+        base = `${base}-${cleanCode}`;
+    }
+    return base.replace(/-+/g, '-');
 }
 
-// 5. UPDATE SEO META TAGS, DYNAMIC CANONICAL, & JSON-LD SCHEMA
+// 5. GENERATE CLEAN CRAWLABLE KEYWORD-RICH PRODUCT URL
+function getProductPageUrl(product) {
+    if (!product || !product.code) return DOMAIN_URL;
+    const slug = getProductSlug(product);
+    return `${DOMAIN_URL}/?product=${encodeURIComponent(slug)}`;
+}
+
+// 6. EXTRACT PRODUCT CODE FROM EITHER SHORT CODE OR KEYWORD SLUG
+function findProductFromSlugOrCode(param) {
+    if (!param) return null;
+    const clean = decodeURIComponent(String(param)).trim().toLowerCase();
+
+    // 1. Direct code exact match
+    let found = allProducts.find(p => String(p.code).toLowerCase() === clean);
+    if (found) return found;
+
+    // 2. Slug ending with code (e.g., srikalahasti-pen-kalamkari-...-cpks183)
+    const match = clean.match(/(?:.*-)?([a-z0-9]+)$/);
+    if (match && match[1]) {
+        found = allProducts.find(p => String(p.code).toLowerCase() === match[1]);
+        if (found) return found;
+    }
+
+    // 3. Fallback: Search if any product code is included in the slug
+    found = allProducts.find(p => clean.includes(String(p.code).toLowerCase()));
+    return found || null;
+}
+
+// 7. UPDATE SEO META TAGS, DYNAMIC CANONICAL, & JSON-LD SCHEMA
 function updateGoogleImageSchemaAndMeta(product) {
     if (!product) return;
     const pageTitle = `${product.title} (Code: ${product.code}) — Hand-Painted Srikalahasti Pen Kalamkari | Dhanalakshmi Kalamkari`;
@@ -286,11 +327,11 @@ function inferDepartmentFromText(...values) {
     return normalizeDepartment(combined);
 }
 
-function navigateToState(department, fabric, productCode = null, hash = '', push = true) {
+function navigateToState(department, fabric, productIdentifier = null, hash = '', push = true) {
     const url = new URL(window.location.href);
     
-    if (productCode) {
-        url.searchParams.set('product', productCode);
+    if (productIdentifier) {
+        url.searchParams.set('product', productIdentifier);
     } else {
         url.searchParams.delete('product');
     }
@@ -304,9 +345,9 @@ function navigateToState(department, fabric, productCode = null, hash = '', push
     url.hash = hash;
 
     if (push) {
-        window.history.pushState({ department, fabric, productCode, hash }, '', url);
+        window.history.pushState({ department, fabric, productIdentifier, hash }, '', url);
     } else {
-        window.history.replaceState({ department, fabric, productCode, hash }, '', url);
+        window.history.replaceState({ department, fabric, productIdentifier, hash }, '', url);
     }
 }
 
@@ -550,9 +591,11 @@ function renderProducts(products, container, isHorizontal = false) {
         card.dataset.code = product.code;
         if (product.qty <= 0) card.classList.add('sold-out');
 
+        // KEYWORD-RICH SEO URL SLUG ROUTING
         card.onclick = () => {
             sessionPushedStates++;
-            navigateToState(product.departmentKey || currentDepartment, null, product.code, '', !isHorizontal);
+            const seoSlug = getProductSlug(product);
+            navigateToState(product.departmentKey || currentDepartment, null, seoSlug, '', !isHorizontal);
             showProductDetails(product);
         };
 
@@ -564,7 +607,7 @@ function renderProducts(products, container, isHorizontal = false) {
         imageWrapper.className = 'product-image-wrapper';
 
         const img = document.createElement('img');
-        img.alt = `Dhanalakshmi Kalamkari ${product.title} Code ${product.code} (${product.fabric})`; 
+        img.alt = `Hand-Painted Srikalahasti Pen Kalamkari ${product.title} ${product.code} (${product.fabric})`; 
         img.title = `Dhanalakshmi Kalamkari Srikalahasti — ${product.title}`;
         img.loading = 'lazy';
         
@@ -935,7 +978,7 @@ function showProductDetails(product) {
     if (elements.detailImage) {
         delete elements.detailImage.dataset.fallbackAttempted;
         elements.detailImage.src = getProductImageUrl(product, 2000);
-        elements.detailImage.alt = `Dhanalakshmi Kalamkari ${product.title}`;
+        elements.detailImage.alt = `Hand-Painted Srikalahasti Pen Kalamkari ${product.title} (${product.fabric})`;
         setupImageFallback(elements.detailImage, product, 2000);
     }
 
@@ -1225,19 +1268,19 @@ function handlePopState() {
         return;
     }
 
-    // Check query parameter (?product=KS001) or legacy hash (#kalamkari-KS001)
-    let productCode = productParam;
-    if (!productCode && (hash.includes('kalamkari') || hash.startsWith('#product/'))) {
+    // Resolves both keyword slugs and direct codes (?product=srikalahasti-pen-kalamkari-...-cpks183 or ?product=CPKS183)
+    let product = findProductFromSlugOrCode(productParam);
+    
+    // Legacy hash fallback (e.g., #kalamkari-CPKS183)
+    if (!product && (hash.includes('kalamkari') || hash.startsWith('#product/'))) {
         const codeMatch = hash.match(/(?:[A-Za-z0-9_-]+-)?([A-Za-z0-9]+)$/);
-        productCode = codeMatch ? codeMatch[1] : hash.split('/').pop();
+        const extracted = codeMatch ? codeMatch[1] : hash.split('/').pop();
+        product = findProductFromSlugOrCode(extracted);
     }
 
-    if (productCode) {
-        const product = allProducts.find(p => String(p.code).toLowerCase() === String(productCode).toLowerCase());
-        if (product) {
-            showProductDetails(product);
-            return;
-        }
+    if (product) {
+        showProductDetails(product);
+        return;
     }
 
     renderFilterButtons();
